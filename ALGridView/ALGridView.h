@@ -7,7 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "ALGridViewCell.h"
+#import "ALGridViewItem.h"
 
 @protocol ALGridViewDataSource;
 @protocol ALGridViewDelegate;
@@ -24,17 +24,18 @@
 @property (nonatomic, getter = isEditing) BOOL editing;
 
 - (void)reloadData;
-- (ALGridViewCell *)gridViewCellAtIndex:(NSInteger)index;
-- (NSInteger)numberOfItemsInGridView:(ALGridView *)gridView;
-- (ALGridViewCell *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier;
-
+- (ALGridViewItem *)itemAtIndex:(NSInteger)index;
+- (NSInteger)indexOfItem:(ALGridViewItem *)item;
+- (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier;
+- (void)deleteItemAtIndex:(NSInteger)index;
+- (void)deleteItemAtIndex:(NSInteger)index animation:(CAAnimation *)animation;
 @end
 
 @protocol ALGridViewDataSource <NSObject>
 @required
 - (NSInteger)numberOfItemsInGridView:(ALGridView *)gridView;
 - (NSInteger)numberOfColumnsInGridView:(ALGridView *)gridView;
-- (ALGridViewCell *)ALGridView:(ALGridView *)gridView cellAtIndex:(NSInteger)index;
+- (ALGridViewItem *)ALGridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index;
 @optional
 - (BOOL)ALGridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index;
 - (BOOL)ALGridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index;
@@ -43,12 +44,17 @@
 @protocol ALGridViewDelegate <NSObject>
 @required
 - (CGSize)itemSizeForGridView:(ALGridView *)gridView;
-- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;
 @optional
+- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;
 - (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;
 - (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;
-- (void)ALGridView:(ALGridView *)gridView didDraggedOutCellAtIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didDraggedCellAtIndex:(NSInteger)sourceIndex intoCellAtIndex:(NSInteger)destinationIndex withTouch:(UITouch *)touch;
+- (void)ALGridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
+- (void)ALGridView:(ALGridView *)gridView didDraggedItemAtIndex:(NSInteger)sourceIndex intoItemAtIndex:(NSInteger)destinationIndex withTouch:(UITouch *)touch;
+- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView;
 - (void)ALGridViewDidEndEditing:(ALGridView *)gridView;
 - (void)ALGridView:(ALGridView *)gridView scrollViewDidScroll:(UIScrollView *)scrollView;
+- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
+
+- (void)ALGridViewDidScroll:(ALGridView *)gridView;
+- (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;
 @end

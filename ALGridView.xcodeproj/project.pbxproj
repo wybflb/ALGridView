@@ -21,7 +21,7 @@
 		588F533D19343F07009C077A /* ALGridViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 588F533C19343F07009C077A /* ALGridViewTests.m */; };
 		588F534819343F14009C077A /* RootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 588F534719343F14009C077A /* RootViewController.m */; };
 		588F534B19343F25009C077A /* ALGridView.m in Sources */ = {isa = PBXBuildFile; fileRef = 588F534A19343F25009C077A /* ALGridView.m */; };
-		588F534E19343FBA009C077A /* ALGridViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 588F534D19343FBA009C077A /* ALGridViewCell.m */; };
+		588F534E19343FBA009C077A /* ALGridViewItem.m in Sources */ = {isa = PBXBuildFile; fileRef = 588F534D19343FBA009C077A /* ALGridViewItem.m */; };
 		588F535119346583009C077A /* ALGridFolderView.m in Sources */ = {isa = PBXBuildFile; fileRef = 588F535019346583009C077A /* ALGridFolderView.m */; };
 /* End PBXBuildFile section */
 
@@ -56,8 +56,8 @@
 		588F534719343F14009C077A /* RootViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RootViewController.m; sourceTree = "<group>"; };
 		588F534919343F25009C077A /* ALGridView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ALGridView.h; sourceTree = "<group>"; };
 		588F534A19343F25009C077A /* ALGridView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ALGridView.m; sourceTree = "<group>"; };
-		588F534C19343FBA009C077A /* ALGridViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ALGridViewCell.h; sourceTree = "<group>"; };
-		588F534D19343FBA009C077A /* ALGridViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ALGridViewCell.m; sourceTree = "<group>"; };
+		588F534C19343FBA009C077A /* ALGridViewItem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ALGridViewItem.h; sourceTree = "<group>"; };
+		588F534D19343FBA009C077A /* ALGridViewItem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ALGridViewItem.m; sourceTree = "<group>"; };
 		588F534F19346583009C077A /* ALGridFolderView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ALGridFolderView.h; sourceTree = "<group>"; };
 		588F535019346583009C077A /* ALGridFolderView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ALGridFolderView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -125,8 +125,8 @@
 				588F534719343F14009C077A /* RootViewController.m */,
 				588F534919343F25009C077A /* ALGridView.h */,
 				588F534A19343F25009C077A /* ALGridView.m */,
-				588F534C19343FBA009C077A /* ALGridViewCell.h */,
-				588F534D19343FBA009C077A /* ALGridViewCell.m */,
+				588F534C19343FBA009C077A /* ALGridViewItem.h */,
+				588F534D19343FBA009C077A /* ALGridViewItem.m */,
 				588F534F19346583009C077A /* ALGridFolderView.h */,
 				588F535019346583009C077A /* ALGridFolderView.m */,
 				588F532919343F07009C077A /* Images.xcassets */,
@@ -211,6 +211,9 @@
 				LastUpgradeCheck = 0510;
 				ORGANIZATIONNAME = "Arien Lau";
 				TargetAttributes = {
+					588F531319343F07009C077A = {
+						DevelopmentTeam = ZTW9XPA927;
+					};
 					588F532E19343F07009C077A = {
 						TestTargetID = 588F531319343F07009C077A;
 					};
@@ -261,7 +264,7 @@
 			files = (
 				588F532819343F07009C077A /* AppDelegate.m in Sources */,
 				588F534B19343F25009C077A /* ALGridView.m in Sources */,
-				588F534E19343FBA009C077A /* ALGridViewCell.m in Sources */,
+				588F534E19343FBA009C077A /* ALGridViewItem.m in Sources */,
 				588F532419343F07009C077A /* main.m in Sources */,
 				588F534819343F14009C077A /* RootViewController.m in Sources */,
 				588F535119346583009C077A /* ALGridFolderView.m in Sources */,
@@ -381,11 +384,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ALGridView/ALGridView-Prefix.pch";
 				INFOPLIST_FILE = "ALGridView/ALGridView-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -395,11 +401,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ALGridView/ALGridView-Prefix.pch";
 				INFOPLIST_FILE = "ALGridView/ALGridView-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
@@ -463,6 +472,7 @@
 				588F534219343F07009C077A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		588F534319343F07009C077A /* Build configuration list for PBXNativeTarget "ALGridViewTests" */ = {
 			isa = XCConfigurationList;
@@ -471,6 +481,7 @@
 				588F534519343F07009C077A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

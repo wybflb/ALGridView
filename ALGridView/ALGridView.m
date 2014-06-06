@@ -17,15 +17,18 @@ CGFloat kDefaultLeftMargin = 30.0f;
 CGFloat kDefaultAnimationInterval = 0.2f;
 NSUInteger kDefaultReuseItemsNumber = 15;
 
+NSString *kShakeAnimationKey = @"shakeAnimation";
+
 const NSTimeInterval kInterEditingHoldInterval = 1.0;
 
 @interface ALGridView () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
 {
-    ALGridViewCell *_dragCell;
+    ALGridViewItem *_dragItem;
     CGFloat _rowSpacing;
     CGFloat _columnSpacing;
     UITapGestureRecognizer *_endEditingGesture;
     CGFloat _offsetThreshold;
+    CGFloat _lastOffsetY;
 }
 
 @property (nonatomic, strong) NSMutableArray *items;
@@ -48,6 +51,8 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
         _bottomMargin = kDefaultBottomMargin;
         _leftMargin = kDefaultLeftMargin;
         _editing = NO;
+        _offsetThreshold = frame.size.height / 4.0;
+        _lastOffsetY = 0.0f;
          
         self.multipleTouchEnabled = NO;
         self.clipsToBounds = YES;
@@ -97,6 +102,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     [super layoutSubviews];
     
     _contentView.alwaysBounceVertical = YES;
+    _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
     [self updateScrollViewContentSize];
 }
 
@@ -108,7 +114,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     
     NSInteger rowCount = (itemsCount / columnCount) + ((itemsCount % columnCount == 0) ? 0 : 1);
     CGFloat height = _topMargin + (itemSize.height + _rowSpacing) * rowCount - _rowSpacing + _bottomMargin;
-    _contentView.contentSize = CGSizeMake(_contentView.contentSize.width, MAX(height, self.bounds.size.height));
+    _contentView.contentSize = CGSizeMake(CGRectGetWidth(_contentView.bounds), MAX(height, self.bounds.size.height));
 }
 
 - (NSInteger)numberOfColumns
@@ -179,14 +185,14 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 - (void)setAllItemsFrame
 {
     for (int i = 0; i < _items.count; i++) {
-        ALGridViewCell *cell = [self itemAtIndex:i];
-        if (!cell || [cell isEqual:[NSNull null]]) {
+        ALGridViewItem *item = [self itemAtIndex:i];
+        if ([item isKindOfClass:[NSNull class]]) {
             continue;
         }
-        if (!cell.isDragging) {
-            cell.transform = CGAffineTransformIdentity;
+        if (!item.isDragging) {
+            item.transform = CGAffineTransformIdentity;
             CGRect frame = [self frameForItemAtIndex:i];
-            cell.frame = [cell isEqual:_dragCell] ? [_contentView convertRect:frame toView:self] : frame;
+            item.frame = [item isEqual:_dragItem] ? [_contentView convertRect:frame toView:self] : frame;
         }
     }
 }
@@ -195,7 +201,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 {
     if (index >= 0 && index < _items.count) {
         NSInteger columnCount = [self numberOfColumns];
-        NSInteger row = (index / columnCount) + ((index % columnCount == 0) ? 0 : 1);
+        NSInteger row = (index / columnCount);
         NSInteger column = index % columnCount;
         CGSize itemSize = [self itemSize];
         CGFloat x = _leftMargin + column * (itemSize.width + _columnSpacing);
@@ -205,39 +211,113 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     return CGRectZero;
 }
 
-- (NSInteger)indexOfItem:(ALGridViewCell *)cell
+- (NSInteger)indexOfItem:(ALGridViewItem *)item
 {
-    if (cell) {
-        return [_items indexOfObject:cell];
-    }
-    return -1;
+    return (item ? ([_items indexOfObject:item]) : (-1));
 }
 
-- (ALGridViewCell *)itemAtIndex:(NSInteger)index
+- (ALGridViewItem *)itemAtIndex:(NSInteger)index
 {
     if (index >= 0 && index < _items.count) {
-        ALGridViewCell *cell = [_items objectAtIndex:index];
-        if ([cell isKindOfClass:[ALGridViewCell class]]) {
-            return cell;
+        ALGridViewItem *item = [_items objectAtIndex:index];
+        if ([item isKindOfClass:[ALGridViewItem class]]) {
+            return item;
         }
     }
     return nil;
+}
+
+- (void)resetVariatesState
+{
+#warning 变量置空
+    _dragItem = nil;
 }
 
 - (void)reloadData
 {
+    [self resetVariatesState];
     
+    [self resetAllVisibleItems];
+    [self updateScrollViewContentSize];
 }
 
-- (ALGridViewCell *)gridViewCellAtIndex:(NSInteger)index
+- (void)resetAllVisibleItems
 {
-    if (index >= 0 && index < _items.count) {
-        id object = [_items objectAtIndex:index];
-        if ([object isKindOfClass:[ALGridViewCell class]]) {
-            return (ALGridViewCell *)object;
+    for (id object in _items) {
+        if ([object respondsToSelector:@selector(removeFromSuperview)]) {
+            [object performSelector:@selector(removeFromSuperview)];
         }
     }
-    return nil;
+    [_items removeAllObjects];
+    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
+    NSInteger totalItemsNumber = [self numberOfItems];
+    
+    for (NSInteger i = 0; i < totalItemsNumber; i++) {
+        [_items addObject:[NSNull null]];
+    }
+    for (NSInteger index = 0; index < totalItemsNumber; index++) {
+        CGRect frame = [self frameForItemAtIndex:index];
+        if (CGRectIntersectsRect(loadDataRect, frame)) {
+            if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
+                ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
+                item.frame = frame;
+                [self configItemEvents:item];
+                [_items replaceObjectAtIndex:index withObject:item];
+                [_contentView addSubview:item];
+            } else {
+                NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method ALGridView:itemAtIndex:" userInfo:nil];
+                [exception raise];
+            }
+        }
+    }
+}
+
+- (void)removeAndAddItemsIfNecessary
+{
+    NSInteger totalItemsNumber = [self numberOfItems];
+    if (totalItemsNumber < 1) {
+        return;
+    }
+    
+    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
+    for (NSInteger index = 0; index < _items.count; index++) {
+        CGRect frame = [self frameForItemAtIndex:index];
+        ALGridViewItem *item = [self itemAtIndex:index];
+        if (!CGRectIntersectsRect(loadDataRect, frame)) {
+            if (item && ![item isEqual:_dragItem]) {
+                [self enqueueReusableItem:item];
+                [_items replaceObjectAtIndex:index withObject:[NSNull null]];
+            }
+        } else {
+            if (!item) {
+                if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
+                    ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
+                    item.frame = frame;
+                    [self configItemEvents:item];
+                    [_items replaceObjectAtIndex:index withObject:item];
+                    [_contentView addSubview:item];
+                } else {
+                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method ALGridView:itemAtIndex:" userInfo:nil];
+                    [exception raise];
+                }
+            }
+        }
+    }
+}
+
+- (void)deleteItemAtIndex:(NSInteger)index
+{
+    [self deleteItemAtIndex:index animation:nil];
+}
+
+- (void)deleteItemAtIndex:(NSInteger)index animation:(CAAnimation *)animation
+{
+    if (index < 0 || index > _items.count) {
+        return;
+    }
+#warning do delete action
 }
 
 - (BOOL)scrollEnabled
@@ -253,16 +333,16 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
         _contentView.scrollEnabled = YES;
         
         [UIView animateWithDuration:kDefaultAnimationInterval animations:^{
-            for (ALGridViewCell *cell in _items) {
-                if ([cell isEqual:[NSNull null]]) {
+            for (ALGridViewItem *item in _items) {
+                if ([item isEqual:[NSNull null]]) {
                     continue;
                 }
-                cell.transform = CGAffineTransformIdentity;
-                cell.deleteButton.alpha = 0;
+                item.transform = CGAffineTransformIdentity;
+                item.deleteButton.alpha = 0;
             }
         } completion:^(BOOL finished) {
             [self layoutItemsIsNeedAnimation:NO];
-            _dragCell = nil;
+            _dragItem = nil;
             [self endEditAnimationDidStopWithContext:nil finish:finished];
             if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
                 [_delegate ALGridViewDidEndEditing:self];
@@ -273,11 +353,11 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 
 - (void)endEditAnimationDidStopWithContext:(void *)context finish:(BOOL)finish
 {
-    for (ALGridViewCell *cell in _items) {
-        if ([cell isEqual:[NSNull null]]) {
+    for (ALGridViewItem *item in _items) {
+        if ([item isEqual:[NSNull null]]) {
             continue;
         }
-        cell.editing = NO;
+        item.editing = NO;
     }
 }
 
@@ -286,85 +366,216 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     return _editing;
 }
 
-- (ALGridViewCell *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier
+- (void)beginEditing
+{
+    if (_editing) {
+        return;
+    }
+    _editing = YES;
+    _contentView.delaysContentTouches = NO;
+    
+    for (ALGridViewItem *item in _items) {
+        if ([item isKindOfClass:[NSNull class]]) {
+            continue;
+        }
+        item.editing = YES;
+        [item.deleteButton addTarget:self action:@selector(itemDeleteButtonDidTaped:) forControlEvents:UIControlEventTouchUpInside];
+        
+        CGFloat rotation = 0.03;
+        CABasicAnimation* shake = [CABasicAnimation animationWithKeyPath:@"transform"];
+        shake.duration = 0.13;
+        shake.autoreverses = YES;
+        shake.repeatCount  = MAXFLOAT;
+        shake.removedOnCompletion = NO;
+        shake.fromValue = [NSValue valueWithCATransform3D:CATransform3DRotate(self.layer.transform, -rotation, 0.0, 0.0, 1.0)];
+        shake.toValue   = [NSValue valueWithCATransform3D:CATransform3DRotate(self.layer.transform, rotation, 0.0 ,0.0, 1.0)];
+        [item.layer addAnimation:shake forKey:kShakeAnimationKey];
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidBeginEditing:)]) {
+        [_delegate ALGridViewDidBeginEditing:self];
+    }
+}
+
+- (void)endEditing
+{
+    if (!_editing) {
+        return;
+    }
+    _editing = NO;
+    _contentView.delaysContentTouches = YES;
+    _contentView.scrollEnabled = YES;
+    [UIView animateWithDuration:0.3 animations:^{
+        for (ALGridViewItem *item in _items) {
+            if ([item isKindOfClass:[NSNull class]]) {
+                continue;
+            }
+            item.deleteButton.alpha = 0;
+        
+            [item.layer removeAnimationForKey:kShakeAnimationKey];
+            item.transform = CGAffineTransformIdentity;
+        }
+    } completion:^(BOOL finished) {
+        [self endEditingAnimationDidStop];
+    }];
+    
+    [self layoutItemsIsNeedAnimation:NO];
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
+        [_delegate ALGridViewDidEndEditing:self];
+    }
+    
+    [self resetVariatesState];
+}
+
+- (void)endEditingAnimationDidStop
+{
+    for (ALGridViewItem *item in _items) {
+        if ([item isKindOfClass:[NSNull class]]) {
+            continue;
+        }
+        item.editing = NO;
+    }
+}
+
+- (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier
 {
     if (!reuseIdentifier) {
         return nil;
     }
     NSMutableSet *set = [_reuseQueue objectForKey:reuseIdentifier];
-    ALGridViewCell *cell = nil;
+    ALGridViewItem *item = nil;
     if (set) {
-        cell = [set anyObject];
-        if (cell) {
-            [set removeObject:cell];
-            cell.hidden = NO;
+        item = [set anyObject];
+        if (item) {
+            [set removeObject:item];
+            item.hidden = NO;
         }
     }
-    return cell;
+    return item;
 }
 
-- (void)enqueueReusableItem:(ALGridViewCell *)cell
+- (void)enqueueReusableItem:(ALGridViewItem *)item
 {
-    if ([cell isKindOfClass:[ALGridViewCell class]]) {
-        [self removeCellEvents:cell];
-        if ([cell respondsToSelector:@selector(prepareForReuse)]) {
-            [cell prepareForReuse];
+    if ([item isKindOfClass:[ALGridViewItem class]]) {
+        [self removeItemEvents:item];
+        if ([item respondsToSelector:@selector(prepareForReuse)]) {
+            [item prepareForReuse];
         }
-        if ([cell.reuseIdentifier length]) {
-            if (![_reuseQueue objectForKey:cell.reuseIdentifier]) {
-                [_reuseQueue setObject:[NSMutableSet set] forKey:cell.reuseIdentifier];
+        if ([item.reuseIdentifier length]) {
+            if (![_reuseQueue objectForKey:item.reuseIdentifier]) {
+                [_reuseQueue setObject:[NSMutableSet set] forKey:item.reuseIdentifier];
             }
-            NSMutableSet *set = [_reuseQueue objectForKey:cell.reuseIdentifier];
+            NSMutableSet *set = [_reuseQueue objectForKey:item.reuseIdentifier];
             if ([set count] <= kDefaultReuseItemsNumber) {
-                [set addObject:cell];
+                [set addObject:item];
             }
         }
-        [cell removeFromSuperview];
+        [item removeFromSuperview];
     }
 }
 
-- (void)removeCellEvents:(ALGridViewCell *)cell
+- (void)removeItemEvents:(ALGridViewItem *)item
 {
-    if ([cell isKindOfClass:[ALGridViewCell class]]) {
-        [cell removeTarget:self action:@selector(cellDidTaped:) forControlEvents:UIControlEventTouchUpInside];
-        [cell removeTarget:self action:@selector(cellDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
-        [cell removeTarget:self action:@selector(cellDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
-        [cell removeTarget:self action:@selector(cellDidTouchUpOutSide:) forControlEvents:UIControlEventTouchCancel];
-        [cell removeTarget:self action:@selector(cellDidTouchUpOutSide:) forControlEvents:UIControlEventTouchDragExit];
-        [cell.deleteButton removeTarget:self action:@selector(cellDeleteButtonDidTaped:) forControlEvents:UIControlEventTouchUpInside];
+    if ([item isKindOfClass:[ALGridViewItem class]]) {
+        [item removeTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
+        [item removeTarget:self action:@selector(itemDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
+        [item removeTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
+        [item removeTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchCancel];
+        [item removeTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchDragExit];
+        [item.deleteButton removeTarget:self action:@selector(itemDeleteButtonDidTaped:) forControlEvents:UIControlEventTouchUpInside];
     }
 }
 
-- (void)configCellEvents:(ALGridViewCell *)cell
+- (void)configItemEvents:(ALGridViewItem *)item
 {
-    if ([cell isKindOfClass:[ALGridViewCell class]]) {
-        cell.editing = _editing;
-        [cell addTarget:self action:@selector(cellDidTaped:) forControlEvents:UIControlEventTouchUpInside];
-        [cell addTarget:self action:@selector(cellDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
-        [cell addTarget:self action:@selector(cellDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
-        [cell addTarget:self action:@selector(cellDidTouchUpOutSide:) forControlEvents:UIControlEventTouchCancel];
-        [cell addTarget:self action:@selector(cellDidTouchUpOutSide:) forControlEvents:UIControlEventTouchDragExit];
-        [cell.deleteButton addTarget:self action:@selector(cellDeleteButtonDidTaped:) forControlEvents:UIControlEventTouchUpInside];
+    if ([item isKindOfClass:[ALGridViewItem class]]) {
+        item.editing = _editing;
+        [item addTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
+        [item addTarget:self action:@selector(itemDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
+        [item addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
+        [item addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchCancel];
+        [item addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchDragExit];
+        [item.deleteButton addTarget:self action:@selector(itemDeleteButtonDidTaped:) forControlEvents:UIControlEventTouchUpInside];
     }
 }
 
-#pragma mark - cell Events
-- (void)cellDidTaped:(ALGridViewCell *)cell
+#pragma mark - item Events
+- (void)itemDidTaped:(ALGridViewItem *)item
+{
+    if (_editing) {
+        return;
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didSelectItemAtIndex:)]) {
+        NSInteger index = [self indexOfItem:item];
+        if (index != -1) {
+            [item setSelected:YES];
+            [item performSelector:@selector(setSelected:) withObject:[NSNumber numberWithBool:NO] afterDelay:0.3];
+            
+            [_delegate ALGridView:self didSelectItemAtIndex:index];
+        }
+    }
+}
+
+- (void)itemDidTouchDown:(ALGridViewItem *)item withEvent:(UIEvent *)event
 {}
 
-- (void)cellDidTouchDown:(ALGridViewCell *)cell withEvent:(UIEvent *)event
+- (void)itemDidTouchUpOutSide:(ALGridViewItem *)item
 {}
 
-- (void)cellDidTouchUpOutSide:(ALGridViewCell *)cell
+- (void)itemDeleteButtonDidTaped:(UIButton *)button
+{
+    ALGridViewItem *item = (ALGridViewItem *)button.superview;
+    if ([item isKindOfClass:[ALGridViewItem class]]) {
+        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didTapedDeleteButtonWithIndex:)]) {
+            [_delegate ALGridView:self didTapedDeleteButtonWithIndex:item.index];
+        }
+    }
+}
+
+#pragma mark - UIScrollViewDelegate
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    CGFloat contentOffsetY = _contentView.contentOffset.y;
+    //用户可能在为0的时候，向上拖拽
+    if (contentOffsetY > 0) {
+        CGFloat diff = 0;
+#if __LP64__
+        diff = fabs(_lastOffsetY - contentOffsetY);
+#else
+        diff = fabsf(_lastOffsetY - contentOffsetY);
+#endif
+        if (diff > _offsetThreshold) {
+            _lastOffsetY = contentOffsetY;
+            [self removeAndAddItemsIfNecessary];
+        }
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScroll:)]) {
+        [_delegate ALGridViewDidScroll:self];
+    }
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+{}
+// called on finger up if the user dragged. velocity is in points/millisecond. targetContentOffset may be changed to adjust where the scroll view comes to rest
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset NS_AVAILABLE_IOS(5_0)
+{}
+// called on finger up if the user dragged. decelerate is true if it will continue moving afterwards
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {}
 
-- (void)cellDeleteButtonDidTaped:(UIButton *)button
+- (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
+{}
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView{}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView// called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
 {}
 
-
-
-
-
+- (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScrollToTop:)]) {
+        [_delegate ALGridViewDidScrollToTop:self];
+    }
+}
 
 
 

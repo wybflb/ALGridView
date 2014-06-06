@@ -8,7 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ALGridViewCell : UIControl
+@interface ALGridViewItem : UIControl
 
 @property (nonatomic, copy) NSString *reuseIdentifier;
 @property (nonatomic, getter = isDragging) BOOL dragging;
@@ -19,14 +19,15 @@
 @property (nonatomic, assign) BOOL canLeaveCurrentView;
 @property (nonatomic, retain) id userInfo;
 @property (nonatomic, retain) UIButton *deleteButton;
+@property (nonatomic, assign) NSUInteger index;
 
-- (ALGridViewCell *)initWithReuseIdentifier:(NSString *)identifier;
+- (instancetype)initWithReuseIdentifier:(NSString *)reuserIdentifier;
 - (void)prepareForReuse;
 /**
  是否可以接收其他cell进入，创建一个文件夹
  @param otherCell 被拖入的cell
  @param touch 当前touch对象
  */
-- (BOOL)canReceiveOtherCellIn:(ALGridViewCell *)otherCell withTouch:(UITouch *)touch;
+- (BOOL)canReceiveOtherItemIn:(ALGridViewItem *)otherItem withTouch:(UITouch *)touch;
 
 @end
