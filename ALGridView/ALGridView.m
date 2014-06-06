@@ -29,6 +29,8 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     UITapGestureRecognizer *_endEditingGesture;
     CGFloat _offsetThreshold;
     CGFloat _lastOffsetY;
+    BOOL _springing;
+    UITouch *_dragTouch;
 }
 
 @property (nonatomic, strong) NSMutableArray *items;
@@ -109,6 +111,9 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 - (void)updateScrollViewContentSize
 {
     NSInteger columnCount = [self numberOfColumns];
+    if (columnCount < 1) {
+        return;
+    }
     NSInteger itemsCount = MAX(_items.count, [self numberOfItems]);
     CGSize itemSize = [self itemSize];
     
@@ -201,6 +206,9 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 {
     if (index >= 0 && index < _items.count) {
         NSInteger columnCount = [self numberOfColumns];
+        if (columnCount < 1) {
+            return CGRectZero;
+        }
         NSInteger row = (index / columnCount);
         NSInteger column = index % columnCount;
         CGSize itemSize = [self itemSize];
@@ -244,7 +252,8 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 - (void)resetAllVisibleItems
 {
     for (id object in _items) {
-        if ([object respondsToSelector:@selector(removeFromSuperview)]) {
+        if ([object isKindOfClass:[ALGridViewItem class]]) {
+            [self enqueueReusableItem:object];
             [object performSelector:@selector(removeFromSuperview)];
         }
     }
@@ -262,7 +271,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
             if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
                 ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
                 item.frame = frame;
-                [self configItemEvents:item];
+                [self configEventsForItem:item];
                 [_items replaceObjectAtIndex:index withObject:item];
                 [_contentView addSubview:item];
             } else {
@@ -295,9 +304,12 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
                 if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
                     ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
                     item.frame = frame;
-                    [self configItemEvents:item];
+                    [self configEventsForItem:item];
                     [_items replaceObjectAtIndex:index withObject:item];
                     [_contentView addSubview:item];
+                    if (_editing) {
+                        [self addShakeAnimationForItem:item];
+                    }
                 } else {
                     NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method ALGridView:itemAtIndex:" userInfo:nil];
                     [exception raise];
@@ -328,36 +340,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 - (void)triggerEndEditing:(UITapGestureRecognizer *)gesture
 {
     if (_editing && (gesture.state == UIGestureRecognizerStateEnded)) {
-        _editing = NO;
-        _contentView.delaysContentTouches = YES;
-        _contentView.scrollEnabled = YES;
-        
-        [UIView animateWithDuration:kDefaultAnimationInterval animations:^{
-            for (ALGridViewItem *item in _items) {
-                if ([item isEqual:[NSNull null]]) {
-                    continue;
-                }
-                item.transform = CGAffineTransformIdentity;
-                item.deleteButton.alpha = 0;
-            }
-        } completion:^(BOOL finished) {
-            [self layoutItemsIsNeedAnimation:NO];
-            _dragItem = nil;
-            [self endEditAnimationDidStopWithContext:nil finish:finished];
-            if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
-                [_delegate ALGridViewDidEndEditing:self];
-            }
-        }];
-    }
-}
-
-- (void)endEditAnimationDidStopWithContext:(void *)context finish:(BOOL)finish
-{
-    for (ALGridViewItem *item in _items) {
-        if ([item isEqual:[NSNull null]]) {
-            continue;
-        }
-        item.editing = NO;
+        [self endEditing];
     }
 }
 
@@ -381,6 +364,16 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
         item.editing = YES;
         [item.deleteButton addTarget:self action:@selector(itemDeleteButtonDidTaped:) forControlEvents:UIControlEventTouchUpInside];
         
+        [self addShakeAnimationForItem:item];
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidBeginEditing:)]) {
+        [_delegate ALGridViewDidBeginEditing:self];
+    }
+}
+
+- (void)addShakeAnimationForItem:(ALGridViewItem *)item
+{
+    if ([item isKindOfClass:[ALGridViewItem class]]) {
         CGFloat rotation = 0.03;
         CABasicAnimation* shake = [CABasicAnimation animationWithKeyPath:@"transform"];
         shake.duration = 0.13;
@@ -391,8 +384,12 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
         shake.toValue   = [NSValue valueWithCATransform3D:CATransform3DRotate(self.layer.transform, rotation, 0.0 ,0.0, 1.0)];
         [item.layer addAnimation:shake forKey:kShakeAnimationKey];
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidBeginEditing:)]) {
-        [_delegate ALGridViewDidBeginEditing:self];
+}
+
+- (void)removeShakeAnimationForItem:(ALGridViewItem *)item
+{
+    if ([item isKindOfClass:[ALGridViewItem class]]) {
+        [item.layer removeAnimationForKey:kShakeAnimationKey];
     }
 }
 
@@ -404,26 +401,25 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     _editing = NO;
     _contentView.delaysContentTouches = YES;
     _contentView.scrollEnabled = YES;
-    [UIView animateWithDuration:0.3 animations:^{
+    [UIView animateWithDuration:kDefaultAnimationInterval animations:^{
         for (ALGridViewItem *item in _items) {
             if ([item isKindOfClass:[NSNull class]]) {
                 continue;
             }
             item.deleteButton.alpha = 0;
         
-            [item.layer removeAnimationForKey:kShakeAnimationKey];
+            [self removeShakeAnimationForItem:item];
+            
             item.transform = CGAffineTransformIdentity;
         }
     } completion:^(BOOL finished) {
         [self endEditingAnimationDidStop];
+        [self layoutItemsIsNeedAnimation:NO];
+        if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
+            [_delegate ALGridViewDidEndEditing:self];
+        }
+        [self resetVariatesState];
     }];
-    
-    [self layoutItemsIsNeedAnimation:NO];
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
-        [_delegate ALGridViewDidEndEditing:self];
-    }
-    
-    [self resetVariatesState];
 }
 
 - (void)endEditingAnimationDidStop
@@ -456,7 +452,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
 - (void)enqueueReusableItem:(ALGridViewItem *)item
 {
     if ([item isKindOfClass:[ALGridViewItem class]]) {
-        [self removeItemEvents:item];
+        [self removeEventsForItem:item];
         if ([item respondsToSelector:@selector(prepareForReuse)]) {
             [item prepareForReuse];
         }
@@ -465,7 +461,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
                 [_reuseQueue setObject:[NSMutableSet set] forKey:item.reuseIdentifier];
             }
             NSMutableSet *set = [_reuseQueue objectForKey:item.reuseIdentifier];
-            if ([set count] <= kDefaultReuseItemsNumber) {
+            if ([set count] < kDefaultReuseItemsNumber) {
                 [set addObject:item];
             }
         }
@@ -473,7 +469,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     }
 }
 
-- (void)removeItemEvents:(ALGridViewItem *)item
+- (void)removeEventsForItem:(ALGridViewItem *)item
 {
     if ([item isKindOfClass:[ALGridViewItem class]]) {
         [item removeTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
@@ -485,7 +481,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     }
 }
 
-- (void)configItemEvents:(ALGridViewItem *)item
+- (void)configEventsForItem:(ALGridViewItem *)item
 {
     if ([item isKindOfClass:[ALGridViewItem class]]) {
         item.editing = _editing;
@@ -577,6 +573,35 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     }
 }
 
+#pragma mark - Touch Action
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesBegan:touches withEvent:event];
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesCancelled:touches withEvent:event];
+    
+//    if (_dragItem && !_springing) {
+//        for (UITouch *touch in touches) {
+//            if ([touch isEqual:_dragTouch]) {
+//                [self updateTouch];
+//                break;
+//            }
+//        }
+//    }
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesEnded:touches withEvent:event];
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesCancelled:touches withEvent:event];
+}
 
 
 

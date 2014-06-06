@@ -86,7 +86,7 @@
 #pragma mark - ALGridViewDataSource
 - (NSInteger)numberOfItemsInGridView:(ALGridView *)gridView
 {
-    return 100;
+    return 10000;
 }
 
 - (NSInteger)numberOfColumnsInGridView:(ALGridView *)gridView
