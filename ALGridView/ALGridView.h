@@ -24,11 +24,17 @@
 @property (nonatomic, getter = isEditing) BOOL editing;
 
 - (void)reloadData;
-- (ALGridViewItem *)itemAtIndex:(NSInteger)index;
+- (ALGridViewItem *)itemAtIndex:(NSUInteger)index;
 - (NSInteger)indexOfItem:(ALGridViewItem *)item;
 - (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier;
-- (void)deleteItemAtIndex:(NSInteger)index;
-- (void)deleteItemAtIndex:(NSInteger)index animation:(CAAnimation *)animation;
+- (void)deleteItemAtIndex:(NSUInteger)index;
+- (void)deleteItemAtIndex:(NSUInteger)index animation:(CAAnimation *)animation;
+- (NSArray *)visibleItems;
+/**
+ 返回当前可见的items所有的index
+ @return 包含所有可见item的index数组，数组对象为NSNumber类型，数值为对应的index值，如果没有可见item，返回空数组。
+ */
+- (NSArray *)indexsForVisibleItems;
 @end
 
 @protocol ALGridViewDataSource <NSObject>

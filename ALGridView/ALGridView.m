@@ -224,9 +224,9 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     return (item ? ([_items indexOfObject:item]) : (-1));
 }
 
-- (ALGridViewItem *)itemAtIndex:(NSInteger)index
+- (ALGridViewItem *)itemAtIndex:(NSUInteger)index
 {
-    if (index >= 0 && index < _items.count) {
+    if (index < _items.count) {
         ALGridViewItem *item = [_items objectAtIndex:index];
         if ([item isKindOfClass:[ALGridViewItem class]]) {
             return item;
@@ -291,6 +291,7 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     
     CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
+    
     for (NSInteger index = 0; index < _items.count; index++) {
         CGRect frame = [self frameForItemAtIndex:index];
         ALGridViewItem *item = [self itemAtIndex:index];
@@ -319,17 +320,21 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     }
 }
 
-- (void)deleteItemAtIndex:(NSInteger)index
+- (void)deleteItemAtIndex:(NSUInteger)index
 {
+    if (index > _items.count) {
+        return;
+    }
     [self deleteItemAtIndex:index animation:nil];
 }
 
-- (void)deleteItemAtIndex:(NSInteger)index animation:(CAAnimation *)animation
+- (void)deleteItemAtIndex:(NSUInteger)index animation:(CAAnimation *)animation
 {
-    if (index < 0 || index > _items.count) {
+    if (index > _items.count) {
         return;
     }
 #warning do delete action
+    
 }
 
 - (BOOL)scrollEnabled
@@ -430,6 +435,38 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
         }
         item.editing = NO;
     }
+}
+
+- (NSArray *)visibleItems
+{
+    NSMutableArray *visibleItems = [NSMutableArray array];
+    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    for (NSInteger index = 0; index < _items.count; index++) {
+        ALGridViewItem *item = [_items objectAtIndex:index];
+        if ([item isKindOfClass:[ALGridViewItem class]]) {
+            CGRect frame = [self frameForItemAtIndex:index];
+            if (CGRectIntersectsRect(visibleRect, frame)) {
+                [visibleItems addObject:item];
+            }
+        }
+    }
+    return [NSArray arrayWithArray:visibleItems];
+}
+
+- (NSArray *)indexsForVisibleItems
+{
+    NSMutableArray *indexs = [NSMutableArray array];
+    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    for (NSInteger index = 0; index < _items.count; index++) {
+        ALGridViewItem *item = [_items objectAtIndex:index];
+        if ([item isKindOfClass:[ALGridViewItem class]]) {
+            CGRect frame = [self frameForItemAtIndex:index];
+            if (CGRectIntersectsRect(visibleRect, frame)) {
+                [indexs addObject:[NSNumber numberWithInteger:index]];
+            }
+        }
+    }
+    return [NSArray arrayWithArray:indexs];
 }
 
 - (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier
@@ -550,24 +587,45 @@ const NSTimeInterval kInterEditingHoldInterval = 1.0;
     }
 }
 
+// called on start of dragging (may require some time and or distance to move)
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
-{}
-// called on finger up if the user dragged. velocity is in points/millisecond. targetContentOffset may be changed to adjust where the scroll view comes to rest
-- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset NS_AVAILABLE_IOS(5_0)
-{}
+{
+//     NSLog(@"%s", __FUNCTION__);
+}
+
+//// called on finger up if the user dragged. velocity is in points/millisecond. targetContentOffset may be changed to adjust where the scroll view comes to rest
+//- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset
+//{
+//    NSLog(@"%s", __FUNCTION__);
+//    NSLog(@"%@", NSStringFromCGPoint(velocity));
+//}
+
 // called on finger up if the user dragged. decelerate is true if it will continue moving afterwards
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
-{}
+{
+//    NSLog(@"%s", __FUNCTION__);
+//    NSLog(@"%d", decelerate);
+}
 
+// called on finger up as we are moving，手指离开屏幕，视图继续滚动的时候
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
-{}
-- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView{}
+{
+//     NSLog(@"%s", __FUNCTION__);
+}
 
-- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView// called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
+// called when scroll view grinds to a halt,停止滑动了
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+//    NSLog(@"%s", __FUNCTION__);
+}
+
+// called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {}
 
 - (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
 {
+//    [self resetAllVisibleItems]; //是否必须
     if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScrollToTop:)]) {
         [_delegate ALGridViewDidScrollToTop:self];
     }
