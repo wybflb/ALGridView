@@ -13,6 +13,9 @@
 @protocol ALGridViewDelegate;
 
 @interface ALGridView : UIView
+{
+    BOOL _editing;
+}
 
 @property (nonatomic, strong) UIScrollView *contentView;
 @property (nonatomic, assign) id<ALGridViewDataSource>dataSource;
@@ -21,13 +24,14 @@
 @property (nonatomic, assign) CGFloat bottomMargin;
 @property (nonatomic, assign) CGFloat leftMargin;
 @property (nonatomic, readonly) BOOL scrollEnabled;
-@property (nonatomic, getter = isEditing) BOOL editing;
+@property (nonatomic, assign) BOOL canEnterEditing; /**< 是否可进入编辑状态，默认为YES*/
+@property (nonatomic, getter = isEditing, assign) BOOL editing;
 
 - (void)reloadData;
 - (ALGridViewItem *)itemAtIndex:(NSUInteger)index;
 - (NSInteger)indexOfItem:(ALGridViewItem *)item;
 - (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier;
-- (void)deleteItemAtIndex:(NSUInteger)index;
+- (void)deleteItemAtIndex:(NSUInteger)index isNeedAnimation:(BOOL)needAnimation;
 - (void)deleteItemAtIndex:(NSUInteger)index animation:(CAAnimation *)animation;
 - (NSArray *)visibleItems;
 /**
@@ -35,6 +39,9 @@
  @return 包含所有可见item的index数组，数组对象为NSNumber类型，数值为对应的index值，如果没有可见item，返回空数组。
  */
 - (NSArray *)indexsForVisibleItems;
+
+- (CGRect)frameForItemAtIndex:(NSInteger)index;
+
 @end
 
 @protocol ALGridViewDataSource <NSObject>
@@ -60,6 +67,8 @@
 - (void)ALGridViewDidEndEditing:(ALGridView *)gridView;
 - (void)ALGridView:(ALGridView *)gridView scrollViewDidScroll:(UIScrollView *)scrollView;
 - (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
+- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;
+- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;
 
 - (void)ALGridViewDidScroll:(ALGridView *)gridView;
 - (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;
