@@ -39,7 +39,8 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     UITouch *_dragTouch;
     NSTimer *_triggerEditingHolderTimer;
     NSTimer *_springTimer;
-//    NSTimer *_item
+    NSTimer *_willMergeHoldTimer;
+    NSTimer *_didMergeHoldTimer;
 }
 
 @property (nonatomic, strong) NSMutableArray *items;
@@ -69,6 +70,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         _springing = NO;
         _dragTouch = nil;
         _triggerEditingHolderTimer = nil;
+        _canCreateFolder = NO;
          
         self.multipleTouchEnabled = NO;
         self.clipsToBounds = YES;
@@ -282,7 +284,6 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             CGFloat y = _topMargin + row * (itemSize.height + _rowSpacing);
             return CGRectMake(x, y, itemSize.width, itemSize.height);
         }
-       
     }
     return CGRectZero;
 }
@@ -312,6 +313,8 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     
     ALTimerInvalidate(_triggerEditingHolderTimer)
     ALTimerInvalidate(_springTimer)
+    ALTimerInvalidate(_willMergeHoldTimer)
+    ALTimerInvalidate(_didMergeHoldTimer)
 }
 
 - (void)reloadData
@@ -576,10 +579,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     } completion:^(BOOL finished) {
         [self endEditingAnimationDidStop];
         [self layoutItemsIsNeedAnimation:NO];
+        [self resetVariatesState];
         if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
             [_delegate ALGridViewDidEndEditing:self];
         }
-        [self resetVariatesState];
     }];
 }
 
@@ -724,6 +727,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     } else {
         if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canTriggerEditAtIndex:)]) {
             NSInteger index = [self indexOfItem:item];
+            if (index == -1) {
+                return;
+            }
             if ([_dataSource ALGridView:self canTriggerEditAtIndex:index]) {
                 [self startTriggerEditingTimerWithTouchItem:item event:event];
             }
@@ -770,6 +776,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     ALTimerInvalidate(_springTimer)
     if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:item];
+        if (index == -1) {
+            return;
+        }
         BOOL canMove = [_dataSource ALGridView:self canMoveItemAtIndex:index];
         if (!canMove) {
             return;
@@ -784,6 +793,13 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         [_contentView bringSubviewToFront:item];
         _dragItem = item;
         
+        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didBeganDragItemAtIndex:)]) {
+            NSInteger index = [self indexOfItem:_dragItem];
+            if (index != -1) {
+                [_delegate ALGridView:self didBeganDragItemAtIndex:index];
+            }
+        }
+        
         UITouch *touch = [[event allTouches] anyObject];
         _dragTouch = touch;
     }
@@ -796,6 +812,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     }
     if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:_dragItem];
+        if (index == -1) {
+            return;
+        }
         if (![_dataSource ALGridView:self canMoveItemAtIndex:index]) {
             return;
         }
@@ -927,6 +946,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
 //     NSLog(@"%s", __FUNCTION__);
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewWillBeginDragging:)]) {
+        [_delegate ALGridViewWillBeginDragging:self];
+    }
 }
 
 //// called on finger up if the user dragged. velocity is in points/millisecond. targetContentOffset may be changed to adjust where the scroll view comes to rest
@@ -942,9 +964,17 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     NSLog(@"%s", __FUNCTION__);
     ALTimerInvalidate(_triggerEditingHolderTimer)
     if (_dragItem) {
-        CGRect frame = [self frameForItemAtIndex:[self indexOfItem:_dragItem]];
+        NSInteger index = [self indexOfItem:_dragItem];
+        if (index == -1) {
+            return;
+        }
+        CGRect frame = [self frameForItemAtIndex:index];
         _dragItem.frame = frame;
         _dragItem = nil;
+    }
+    
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndDragging:willDecelerate:)]) {
+        [_delegate ALGridViewDidEndDragging:self willDecelerate:decelerate];
     }
 }
 
@@ -952,12 +982,18 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
 {
 //     NSLog(@"%s", __FUNCTION__);
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewWillBeginDecelerating:)]) {
+        [_delegate ALGridViewWillBeginDecelerating:self];
+    }
 }
 
 // called when scroll view grinds to a halt,停止滑动了
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
 //    NSLog(@"%s", __FUNCTION__);
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndDecelerating:)]) {
+        [_delegate ALGridViewDidEndDecelerating:self];
+    }
 }
 
 // called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
@@ -969,6 +1005,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         center.y += CGRectGetHeight(self.bounds);
         _dragItem.center = center;
         [self updateDragTouch];
+    }
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndScrollingAnimation:)]) {
+        [_delegate ALGridViewDidEndScrollingAnimation:self];
     }
 }
 
@@ -985,18 +1024,25 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 {
     [super touchesBegan:touches withEvent:event];
    
-    _dragTouch = [touches anyObject];
-    CGPoint touchPoint = [_dragTouch locationInView:_contentView];
-    for (ALGridViewItem *item in _items) {
-        if (![item isKindOfClass:[ALGridViewItem class]]) {
-            continue;
-        }
-        if (CGRectContainsPoint(item.frame, touchPoint)) {
-            _dragItem = item;
-            _dragItem.dragging = YES;
-            break;
-        }
-    }
+//    _dragTouch = [touches anyObject];
+//    CGPoint touchPoint = [_dragTouch locationInView:_contentView];
+//    for (ALGridViewItem *item in _items) {
+//        if (![item isKindOfClass:[ALGridViewItem class]]) {
+//            continue;
+//        }
+//        if (CGRectContainsPoint(item.frame, touchPoint)) {
+//            if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didBeganDragItemAtIndex:)]) {
+//                NSInteger index = [self indexOfItem:item];
+//                if (index != -1) {
+//                    NSLog(@"%s", __FUNCTION__);
+//                    [_delegate ALGridView:self didBeganDragItemAtIndex:index];
+//                }
+//            }
+//            _dragItem = item;
+//            _dragItem.dragging = YES;
+//            break;
+//        }
+//    }
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
@@ -1021,6 +1067,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     _springing = NO;
     if (_dragItem) {
         _dragItem.dragging = NO;
+        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didEndDragItemAtIndex:)]) {
+            NSInteger index = [self indexOfItem:_dragItem];
+            if (index != -1) {
+                [_delegate ALGridView:self didEndDragItemAtIndex:index];
+            }
+        }
         _dragItem = nil;
     }
     for (UITouch *touch in touches) {
@@ -1041,7 +1093,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     _springing = NO;
     if (_dragItem) {
         _dragItem.dragging = NO;
-        _dragItem.backgroundColor = [UIColor grayColor];
+        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didEndDragItemAtIndex:)]) {
+            NSInteger index = [self indexOfItem:_dragItem];
+            if (index != -1) {
+                [_delegate ALGridView:self didEndDragItemAtIndex:index];
+            }
+        }
         _dragItem = nil;
     }
     for (UITouch *touch in touches) {

@@ -32,6 +32,7 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @property (nonatomic, assign) BOOL canEnterEditing; /**< 是否可进入编辑状态，默认为YES*/
 @property (nonatomic, getter = isEditing, assign) BOOL editing;
 @property (nonatomic, assign) ALGridViewScrollMode scrollMode; //the default value is ALGridViewScrollModeVertical
+@property (nonatomic, assign) BOOL canCreateFolder; //是否支持编辑状态合并两个item，创建文件夹，默认为NO。
 
 - (void)reloadData;
 - (ALGridViewItem *)itemAtIndex:(NSUInteger)index;
@@ -66,18 +67,25 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @required
 - (CGSize)itemSizeForGridView:(ALGridView *)gridView;
 @optional
-- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;
-- (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;
-- (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;
+- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;//
+- (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;//
+- (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;//
 - (void)ALGridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
 - (void)ALGridView:(ALGridView *)gridView didDraggedItemAtIndex:(NSInteger)sourceIndex intoItemAtIndex:(NSInteger)destinationIndex withTouch:(UITouch *)touch;
-- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView;
-- (void)ALGridViewDidEndEditing:(ALGridView *)gridView;
-- (void)ALGridView:(ALGridView *)gridView scrollViewDidScroll:(UIScrollView *)scrollView;
-- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;
+- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView;//
+- (void)ALGridViewDidEndEditing:(ALGridView *)gridView;//
 
-- (void)ALGridViewDidScroll:(ALGridView *)gridView;
-- (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;
+- (void)ALGridViewDidScroll:(ALGridView *)gridView;//
+- (void)ALGridViewWillBeginDragging:(ALGridView *)gridView;//
+- (void)ALGridViewDidEndDragging:(ALGridView *)gridView willDecelerate:(BOOL)decelerate;//
+- (void)ALGridViewWillBeginDecelerating:(ALGridView *)gridView;//
+- (void)ALGridViewDidEndDecelerating:(ALGridView *)gridView;//
+- (void)ALGridViewDidEndScrollingAnimation:(ALGridView *)gridView;//
+- (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;//
+
+- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
+
+- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;//
+- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;//
+
 @end

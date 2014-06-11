@@ -16,7 +16,7 @@
 @property (nonatomic, getter = isDragging) BOOL dragging;
 @property (nonatomic, getter = isEditing) BOOL editing;
 @property (nonatomic, assign) BOOL canDelete;
-@property (nonatomic, assign) BOOL canMove;
+//@property (nonatomic, assign) BOOL canMove;
 @property (nonatomic, assign) BOOL canTriggerEdit;
 @property (nonatomic, assign) BOOL canLeaveCurrentView;
 @property (nonatomic, retain) id userInfo;

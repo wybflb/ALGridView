@@ -43,6 +43,8 @@
     _gridView.topMargin = 30;
     _gridView.bottomMargin = 30;
     _gridView.leftMargin = 10;
+    _gridView.canEnterEditing = YES;
+    _gridView.canCreateFolder = YES;
     [self.view addSubview:_gridView];
     
 //    UIButton *button = [UIButton buttonWithType:UIButtonTypeRoundedRect];
@@ -190,5 +192,14 @@
     return 10;
 }
 
+- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index
+{
+    NSLog(@"%s, %d", __FUNCTION__, index);
+}
+
+- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index
+{
+    NSLog(@"%s, %d", __FUNCTION__, index);
+}
 
 @end
