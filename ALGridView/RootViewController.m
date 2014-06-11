@@ -33,12 +33,13 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     _viewData = [NSMutableArray array];
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 100; i++) {
         [_viewData addObject:[NSNull null]];
     }
-    _gridView = [[ALGridView alloc] initWithFrame:CGRectMake(0, 20, self.view.frame.size.width, self.view.frame.size.height)];
+    _gridView = [[ALGridView alloc] initWithFrame:CGRectMake(0, 20, self.view.frame.size.width, self.view.frame.size.height - 20)];
     _gridView.dataSource = self;
     _gridView.delegate = self;
+//    _gridView.scrollMode = ALGridViewScrollModeHorizontal;
     _gridView.topMargin = 30;
     _gridView.bottomMargin = 30;
     _gridView.leftMargin = 10;
@@ -113,6 +114,16 @@
     item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
     item.backgroundColor = [UIColor grayColor];
     return item;
+}
+
+- (BOOL)ALGridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index
+{
+    return (index != 0);
+}
+
+- (BOOL)ALGridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index
+{
+    return (index != 1);
 }
 
 #pragma mark - ALGridViewDelegate

@@ -63,6 +63,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         _leftMargin = kDefaultLeftMargin;
         _editing = NO;
         _canEnterEditing = YES;
+        _scrollMode = ALGridViewScrollModeVertical;
         _offsetThreshold = frame.size.height / 4.0;
         _lastOffsetY = 0.0f;
         _springing = NO;
@@ -81,6 +82,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         _contentView.multipleTouchEnabled = NO;
         _contentView.backgroundColor = [UIColor clearColor];
         _contentView.bounces = NO;
+        _contentView.pagingEnabled = NO;
         if ([_contentView respondsToSelector:@selector(setKeyboardDismissMode:)]) {
             [_contentView setKeyboardDismissMode:UIScrollViewKeyboardDismissModeOnDrag];
         }
@@ -113,13 +115,46 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     }
 }
 
+- (void)setScrollMode:(ALGridViewScrollMode)scrollMode
+{
+    if (_scrollMode != scrollMode) {
+        _scrollMode = scrollMode;
+        _contentView.pagingEnabled = (_scrollMode == ALGridViewScrollModeHorizontal);
+        if (_scrollMode == ALGridViewScrollModeHorizontal) {
+            _offsetThreshold = CGRectGetWidth(_contentView.bounds);
+        } else {
+            _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
+        }
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
     
     _contentView.alwaysBounceVertical = YES;
-    _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
+//    _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
     [self updateScrollViewContentSize];
+}
+
+- (NSInteger)numberOfItemsPerPageForHorizontalScroll
+{
+    NSInteger columnCount = [self numberOfColumns];
+    CGSize itemSize = [self itemSize];
+    NSInteger rowCountPerPage = 1;
+    CGFloat contentHeight  = CGRectGetHeight(_contentView.bounds);
+    while (_topMargin + (itemSize.height + _rowSpacing) * rowCountPerPage - _rowSpacing + _bottomMargin <  contentHeight) {
+        rowCountPerPage++;
+    }
+    rowCountPerPage -= 1;
+    
+    return rowCountPerPage * columnCount;
+}
+
+- (NSInteger)numberOfPagesForHorizontalScroll
+{
+    NSInteger itemCount = [self numberOfItems];
+    return (itemCount / [self numberOfItemsPerPageForHorizontalScroll]) + (itemCount % [self numberOfItemsPerPageForHorizontalScroll] == 0 ? 0 : 1);
 }
 
 - (void)updateScrollViewContentSize
@@ -130,10 +165,16 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     }
     NSInteger itemsCount = MAX(_items.count, [self numberOfItems]);
     CGSize itemSize = [self itemSize];
-    
-    NSInteger rowCount = (itemsCount / columnCount) + ((itemsCount % columnCount == 0) ? 0 : 1);
-    CGFloat height = _topMargin + (itemSize.height + _rowSpacing) * rowCount - _rowSpacing + _bottomMargin;
-    _contentView.contentSize = CGSizeMake(CGRectGetWidth(_contentView.bounds), MAX(height, self.bounds.size.height));
+    if (_scrollMode == ALGridViewScrollModeVertical) {
+        NSInteger rowCount = (itemsCount / columnCount) + ((itemsCount % columnCount == 0) ? 0 : 1);
+        CGFloat height = _topMargin + (itemSize.height + _rowSpacing) * rowCount - _rowSpacing + _bottomMargin;
+        _contentView.contentSize = CGSizeMake(CGRectGetWidth(_contentView.bounds), MAX(height, self.bounds.size.height));
+    } else {
+        NSInteger itemCountPerPage = [self numberOfItemsPerPageForHorizontalScroll];
+        NSInteger pages = itemsCount / itemCountPerPage + (itemsCount % itemCountPerPage == 0 ? 0 : 1);
+        CGFloat width = pages * _contentView.bounds.size.width * 1.0;
+        _contentView.contentSize = CGSizeMake(MAX(self.bounds.size.width, width), CGRectGetHeight(_contentView.bounds));
+    }
 }
 
 - (NSInteger)numberOfColumns
@@ -224,12 +265,24 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         if (columnCount < 1) {
             return CGRectZero;
         }
-        NSInteger row = (index / columnCount);
-        NSInteger column = index % columnCount;
         CGSize itemSize = [self itemSize];
-        CGFloat x = _leftMargin + column * (itemSize.width + _columnSpacing);
-        CGFloat y = _topMargin + row * (itemSize.height + _rowSpacing);
-        return CGRectMake(x, y, itemSize.width, itemSize.height);
+        if (_scrollMode == ALGridViewScrollModeVertical) {
+            NSInteger row = (index / columnCount);
+            NSInteger column = index % columnCount;
+            CGFloat x = _leftMargin + column * (itemSize.width + _columnSpacing);
+            CGFloat y = _topMargin + row * (itemSize.height + _rowSpacing);
+            return CGRectMake(x, y, itemSize.width, itemSize.height);
+        } else {
+            NSInteger itemCountPerPage = [self numberOfItemsPerPageForHorizontalScroll];
+            NSInteger relativeIndex = index % itemCountPerPage; //由0开始
+            NSInteger row = relativeIndex / columnCount; //由0开始
+            NSInteger page = index / itemCountPerPage; //由0开始
+            NSInteger relativeColumn = relativeIndex % columnCount;
+            CGFloat x = page * CGRectGetWidth(self.bounds) + _leftMargin + relativeColumn * (itemSize.width + _columnSpacing);
+            CGFloat y = _topMargin + row * (itemSize.height + _rowSpacing);
+            return CGRectMake(x, y, itemSize.width, itemSize.height);
+        }
+       
     }
     return CGRectZero;
 }
@@ -280,6 +333,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     [_items removeAllObjects];
     CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
+    if (_scrollMode == ALGridViewScrollModeHorizontal) {
+        loadDataRect = CGRectInset(visibleRect, - CGRectGetWidth(_contentView.bounds), 0);
+    }
+    
     NSInteger totalItemsNumber = [self numberOfItems];
     
     for (NSInteger i = 0; i < totalItemsNumber; i++) {
@@ -311,7 +368,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     
     CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
-    
+    if (_scrollMode == ALGridViewScrollModeHorizontal) {
+        loadDataRect = CGRectInset(visibleRect, -_offsetThreshold, 0);
+    }
     for (NSInteger index = 0; index < _items.count; index++) {
         CGRect frame = [self frameForItemAtIndex:index];
         ALGridViewItem *item = [self itemAtIndex:index];
@@ -709,9 +768,17 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)startDragItem:(ALGridViewItem *)item withEvent:(UIEvent *)event
 {
     ALTimerInvalidate(_springTimer)
-    if (!item.canMove) {
-        return;
+    if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
+        NSInteger index = [self indexOfItem:item];
+        BOOL canMove = [_dataSource ALGridView:self canMoveItemAtIndex:index];
+        if (!canMove) {
+            return;
+        }
     }
+
+//    if (!item.canMove) {
+//        return;
+//    }
     if (item) {
         item.transform = CGAffineTransformIdentity;
         [_contentView bringSubviewToFront:item];
@@ -724,27 +791,52 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 
 - (void)updateDragTouch
 {
-    CGPoint dragPoint = [_dragTouch locationInView:_contentView];
-    if (_dragItem) {
-        _dragItem.center = dragPoint;
-        _dragItem.dragging = YES;
-        [_contentView bringSubviewToFront:_dragItem];
+    if (!_dragItem) {
+        return;
     }
-    CGRect dragItemFrameInView = [_contentView convertRect:_dragItem.frame toView:self];
-    CGFloat itemHeight = [self itemSize].height;
-    CGFloat dragItemMaxY = CGRectGetMaxY(dragItemFrameInView);
-    CGFloat selfHeight = CGRectGetHeight(self.bounds);
-    CGFloat triggerSpringHeight = itemHeight / 10.0;
-    if (dragItemFrameInView.origin.y < 0 && (ABS(dragItemFrameInView.origin.y) >= triggerSpringHeight)) {
-        if (!_springTimer) {
-            _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
+    if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
+        NSInteger index = [self indexOfItem:_dragItem];
+        if (![_dataSource ALGridView:self canMoveItemAtIndex:index]) {
+            return;
         }
-    } else if (dragItemMaxY > selfHeight && ((dragItemMaxY - selfHeight) >= triggerSpringHeight)) {
-        if (!_springTimer) {
-            _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
+    }
+    CGPoint dragPoint = [_dragTouch locationInView:_contentView];
+    _dragItem.center = dragPoint;
+    _dragItem.dragging = YES;
+    [_contentView bringSubviewToFront:_dragItem];
+    CGRect dragItemFrameInView = [_contentView convertRect:_dragItem.frame toView:self];
+    CGSize itemSize = [self itemSize];
+    
+    if (_scrollMode == ALGridViewScrollModeVertical) {
+        CGFloat dragItemMaxY = CGRectGetMaxY(dragItemFrameInView);
+        CGFloat selfHeight = CGRectGetHeight(self.bounds);
+        CGFloat triggerSpringHeight = itemSize.height / 11.0;
+        if (dragItemFrameInView.origin.y < 0 && (ABS(dragItemFrameInView.origin.y) >= triggerSpringHeight)) {
+            if (!_springTimer) {
+                _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
+            }
+        } else if (dragItemMaxY > selfHeight && ((dragItemMaxY - selfHeight) >= triggerSpringHeight)) {
+            if (!_springTimer) {
+                _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
+            }
+        } else {
+            ALTimerInvalidate(_springTimer)
         }
     } else {
-        ALTimerInvalidate(_springTimer)
+        CGFloat dragMaxX = CGRectGetMaxX(dragItemFrameInView);
+        CGFloat selfWidth = CGRectGetWidth(self.bounds);
+        CGFloat triggerSpringWidth = itemSize.width / 11.0;
+        if (dragItemFrameInView.origin.x < 0 && ABS(dragItemFrameInView.origin.x) >= triggerSpringWidth) {
+            if (!_springTimer) {
+                _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
+            }
+        } else if (dragMaxX > selfWidth && ((dragMaxX - selfWidth) >= triggerSpringWidth)) {
+            if (!_springTimer) {
+                _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
+            }
+        } else {
+            ALTimerInvalidate(_springTimer)
+        }
     }
 }
 
@@ -755,16 +847,35 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         return;
     }
     CGFloat selfHeight = CGRectGetHeight(self.bounds);
+    CGPoint offset = _contentView.contentOffset;
+    CGPoint offsetCopy = offset;
     if (userInfo == 1) {
-        CGPoint offset = _contentView.contentOffset;
-        offset.y += selfHeight;
-        offset.y = MIN(offset.y, _contentView.contentSize.height - CGRectGetHeight(_contentView.bounds));
+        if (_scrollMode == ALGridViewScrollModeVertical) {
+            offset.y += selfHeight;
+            offset.y = MIN(offset.y, _contentView.contentSize.height - CGRectGetHeight(_contentView.bounds));
+        } else {
+            offset.x += CGRectGetWidth(_contentView.bounds);
+            offset.x = MIN(offset.x, _contentView.contentSize.width - CGRectGetWidth(_contentView.bounds));
+        }
         [_contentView setContentOffset:offset animated:YES];
+        //当滑动到最后或者最最前一页，继续拖拽，此时_springing为YES，后续无法更新touch事件。
+        _springing = YES;
+        if (CGPointEqualToPoint(offset, offsetCopy)) {
+            _springing = NO;
+        }
     } else if (userInfo == -1) {
-        CGPoint offset = _contentView.contentOffset;
-        offset.y -= selfHeight;
-        offset.y = MAX(0, offset.y);
+        if (_scrollMode == ALGridViewScrollModeVertical) {
+            offset.y -= selfHeight;
+            offset.y = MAX(0, offset.y);
+        } else {
+            offset.x -= CGRectGetWidth(_contentView.bounds);
+            offset.x = MAX(0, offset.x);
+        }
         [_contentView setContentOffset:offset animated:YES];
+        _springing = YES;
+        if (CGPointEqualToPoint(offset, offsetCopy)) {
+            _springing = NO;
+        }
     }
     ALTimerInvalidate(_springTimer)
 }
@@ -790,17 +901,20 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    CGFloat contentOffsetY = _contentView.contentOffset.y;
-    //用户可能在为0的时候，向上拖拽
-    if (contentOffsetY > 0) {
+    CGFloat contentOffset = _contentView.contentOffset.y;
+    if (_scrollMode == ALGridViewScrollModeHorizontal) {
+        contentOffset = _contentView.contentOffset.x;
+    }
+    //用户可能在为0的时候，向上/左 拖拽
+    if (contentOffset > 0) {
         CGFloat diff = 0;
 #if __LP64__
-        diff = fabs(_lastOffsetY - contentOffsetY);
+        diff = fabs(_lastOffsetY - contentOffset);
 #else
-        diff = fabsf(_lastOffsetY - contentOffsetY);
+        diff = fabsf(_lastOffsetY - contentOffset);
 #endif
         if (diff > _offsetThreshold) {
-            _lastOffsetY = contentOffsetY;
+            _lastOffsetY = contentOffset;
             [self removeAndAddItemsIfNecessary];
         }
     }
@@ -850,6 +964,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
     if (_dragItem) {
+        _springing = NO;
         CGPoint center = _dragItem.center;
         center.y += CGRectGetHeight(self.bounds);
         _dragItem.center = center;
@@ -900,9 +1015,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [super touchesEnded:touches withEvent:event];
-    NSLog(@"%s", __FUNCTION__);
+ 
     ALTimerInvalidate(_springTimer)
     ALTimerInvalidate(_triggerEditingHolderTimer)
+    _springing = NO;
     if (_dragItem) {
         _dragItem.dragging = NO;
         _dragItem = nil;
@@ -919,9 +1035,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [super touchesCancelled:touches withEvent:event];
-    NSLog(@"%s", __FUNCTION__);
+    
     ALTimerInvalidate(_springTimer)
     ALTimerInvalidate(_triggerEditingHolderTimer)
+    _springing = NO;
     if (_dragItem) {
         _dragItem.dragging = NO;
         _dragItem.backgroundColor = [UIColor grayColor];

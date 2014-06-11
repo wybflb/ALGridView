@@ -12,6 +12,11 @@
 @protocol ALGridViewDataSource;
 @protocol ALGridViewDelegate;
 
+typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
+    ALGridViewScrollModeVertical, /** 垂直滚动*/
+    ALGridViewScrollModeHorizontal, /** 横向滚动*/
+};
+
 @interface ALGridView : UIView
 {
     BOOL _editing;
@@ -26,6 +31,7 @@
 @property (nonatomic, readonly) BOOL scrollEnabled;
 @property (nonatomic, assign) BOOL canEnterEditing; /**< 是否可进入编辑状态，默认为YES*/
 @property (nonatomic, getter = isEditing, assign) BOOL editing;
+@property (nonatomic, assign) ALGridViewScrollMode scrollMode; //the default value is ALGridViewScrollModeVertical
 
 - (void)reloadData;
 - (ALGridViewItem *)itemAtIndex:(NSUInteger)index;
@@ -33,6 +39,8 @@
 - (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier;
 - (void)deleteItemAtIndex:(NSUInteger)index isNeedAnimation:(BOOL)needAnimation;
 - (void)deleteItemAtIndex:(NSUInteger)index animation:(CAAnimation *)animation;
+- (NSInteger)numberOfPagesForHorizontalScroll;
+
 - (NSArray *)visibleItems;
 /**
  返回当前可见的items所有的index
