@@ -90,7 +90,7 @@
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self performSelector:@selector(resetData) withObject:nil afterDelay:3];
+//    [self performSelector:@selector(resetData) withObject:nil afterDelay:3];
 }
 
 - (void)resetData
@@ -222,14 +222,31 @@
     return 10;
 }
 
-- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index
+//- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index
+//{
+//    NSLog(@"%s, %d", __FUNCTION__, index);
+//}
+//
+//- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index
+//{
+//    NSLog(@"%s, %d", __FUNCTION__, index);
+//}
+
+- (void)ALGridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
 {
-    NSLog(@"%s, %d", __FUNCTION__, index);
+    NSLog(@"will reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
+    NSLog(@"%s", __FUNCTION__);
 }
 
-- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index
+- (void)ALGridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
 {
-    NSLog(@"%s, %d", __FUNCTION__, index);
+    NSLog(@"did Cancel Merge reIndex:%d fromIndex: %d",receiverIndex, fromIndex);
+}
+
+- (void)ALGridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch
+{
+    NSLog(@"did reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
+    NSLog(@"%s", __FUNCTION__);
 }
 
 @end

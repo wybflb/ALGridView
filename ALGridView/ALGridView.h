@@ -70,8 +70,7 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 - (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;//
 - (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;//
 - (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;//
-- (void)ALGridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didDraggedItemAtIndex:(NSInteger)sourceIndex intoItemAtIndex:(NSInteger)destinationIndex withTouch:(UITouch *)touch;
+
 - (void)ALGridViewDidBeginEditing:(ALGridView *)gridView;//
 - (void)ALGridViewDidEndEditing:(ALGridView *)gridView;//
 
@@ -83,9 +82,14 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 - (void)ALGridViewDidEndScrollingAnimation:(ALGridView *)gridView;//
 - (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;//
 
-- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
-
 - (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;//
 - (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;//
 
+- (void)ALGridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
+- (void)ALGridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
+- (void)ALGridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch;//
+
+- (void)ALGridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
+
+- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
 @end

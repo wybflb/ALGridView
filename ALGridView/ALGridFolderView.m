@@ -8,6 +8,7 @@
 
 #import "ALGridFolderView.h"
 
+
 @implementation ALGridFolderView
 
 - (id)initWithFrame:(CGRect)frame

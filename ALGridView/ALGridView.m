@@ -19,9 +19,13 @@ NSUInteger kDefaultReuseItemsNumber = 15;
 
 NSString *kShakeAnimationKey = @"shakeAnimation";
 NSString *kDeleteItemAnimationKey = @"deleteItemAnimationKey";
+NSString *kAcceptItemUserInfoKey = @"acceptItemUserInfoKey";
 
 const NSTimeInterval kEnterEditingHoldInterval = 1.0;
 const NSTimeInterval kSpringHoldInterval = 1.0;
+const NSTimeInterval kWillMergeItemHoldInterval = 0.8;
+const NSTimeInterval kDidMergeItemHoldInterval = 1.2;
+const NSTimeInterval kDragOutHoldInterval = 1.5;
 
 #define ALTimerInvalidate(_timer) if (_timer) {[(_timer) invalidate]; (_timer) = nil;}
 #define kTriggerEditingTimerItemKey @"triggerEditingTimerItemKey"
@@ -42,6 +46,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     NSTimer *_springTimer;
     NSTimer *_willMergeHoldTimer;
     NSTimer *_didMergeHoldTimer;
+    NSTimer *_dragOutHoldTimer;
 }
 
 @property (nonatomic, strong) NSMutableArray *items;
@@ -325,11 +330,13 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     _dragItem = nil;
     _springing = NO;
     _dragTouch = nil;
+    _accepterItem = nil;
     
     ALTimerInvalidate(_triggerEditingHolderTimer)
     ALTimerInvalidate(_springTimer)
     ALTimerInvalidate(_willMergeHoldTimer)
     ALTimerInvalidate(_didMergeHoldTimer)
+    ALTimerInvalidate(_dragOutHoldTimer)
 }
 
 - (void)reloadData
@@ -865,6 +872,55 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     _dragItem.center = dragPoint;
     _dragItem.dragging = YES;
     [_contentView bringSubviewToFront:_dragItem];
+    
+    if (_canCreateFolder) {
+        CGPoint dragPointInSelf = [_contentView convertPoint:dragPoint toView:self];
+//        CGRect dragFrameInSelf = [_contentView convertRect:_dragItem.frame toView:self];
+        if (!CGRectContainsPoint(self.bounds, dragPointInSelf)) {
+            if (!_dragOutHoldTimer) {
+                _dragOutHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDragOutHoldInterval target:self selector:@selector(dragOutHoldTimerDidFired:) userInfo:nil repeats:NO];
+            }
+        } else {
+            ALTimerInvalidate(_dragOutHoldTimer)
+        }
+        
+        NSArray *items = [self visibleItems];
+        if (_accepterItem) {
+            CGRect intersection = CGRectIntersection(_accepterItem.frame, _dragItem.frame);
+            BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= (_accepterItem.frame.size.height * _accepterItem.frame.size.width) / 2.0;
+            if (!isNeedMerge) {
+                NSLog(@"a");
+                [self cancelMergeItems];
+                ALTimerInvalidate(_didMergeHoldTimer)
+            }
+        } else {
+            BOOL isHoldTimer = NO;
+            for (NSInteger index = 0; index < items.count; index++) {
+                ALGridViewItem *item = [items objectAtIndex:index];
+                if ([item isKindOfClass:[ALGridViewItem class]]) {
+                    if ([item isEqual:_dragItem]) {
+                        continue;
+                    }
+                    CGRect intersection = CGRectIntersection(item.frame, _dragItem.frame);
+                    BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= (item.frame.size.height * item.frame.size.width) / 2.0;
+                    if (isNeedMerge) {
+                        if (!_willMergeHoldTimer) {
+                            NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+                            [userInfo setObject:item forKey:kAcceptItemUserInfoKey];
+                            _willMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kWillMergeItemHoldInterval target:self selector:@selector(willMergeHoldTimerFired:) userInfo:userInfo repeats:NO];
+                            isHoldTimer = YES;
+                        }
+                    } else {
+                        if (isHoldTimer) {
+                            ALTimerInvalidate(_willMergeHoldTimer);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     CGRect dragItemFrameInView = [_contentView convertRect:_dragItem.frame toView:self];
     CGSize itemSize = [self itemSize];
     
@@ -873,10 +929,20 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         CGFloat selfHeight = CGRectGetHeight(self.bounds);
         CGFloat triggerSpringHeight = itemSize.height / 11.0;
         if (dragItemFrameInView.origin.y < 0 && (ABS(dragItemFrameInView.origin.y) >= triggerSpringHeight)) {
+            if (_accepterItem) {
+                NSLog(@"b");
+                [self cancelMergeItems];
+            }
+            
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
             }
         } else if (dragItemMaxY > selfHeight && ((dragItemMaxY - selfHeight) >= triggerSpringHeight)) {
+            if (_accepterItem) {
+                NSLog(@"c");
+                [self cancelMergeItems];
+            }
+            
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
             }
@@ -888,16 +954,59 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         CGFloat selfWidth = CGRectGetWidth(self.bounds);
         CGFloat triggerSpringWidth = itemSize.width / 11.0;
         if (dragItemFrameInView.origin.x < 0 && ABS(dragItemFrameInView.origin.x) >= triggerSpringWidth) {
+            if (_accepterItem) {
+                [self cancelMergeItems];
+            }
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
             }
         } else if (dragMaxX > selfWidth && ((dragMaxX - selfWidth) >= triggerSpringWidth)) {
+            if (_accepterItem) {
+                [self cancelMergeItems];
+            }
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
             }
         } else {
             ALTimerInvalidate(_springTimer)
         }
+    }
+}
+
+- (void)dragOutHoldTimerDidFired:(NSTimer *)timer
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didDraggedOutItemAtIndex:)]) {
+        [_delegate ALGridView:self didDraggedOutItemAtIndex:[self indexOfItem:_dragItem]];
+    }
+}
+
+- (void)cancelMergeItems
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didCancelMergeItemsWithReceiverIndex:fromIndex:)]) {
+        NSInteger receiveIndex = [self indexOfItem:_accepterItem];
+        NSInteger fromIndex = _dragItem ? [self indexOfItem:_dragItem] : -1;
+    
+        [_delegate ALGridView:self didCancelMergeItemsWithReceiverIndex:receiveIndex fromIndex:fromIndex];
+    }
+    ALTimerInvalidate(_willMergeHoldTimer)
+    _accepterItem = nil;
+}
+
+- (void)willMergeHoldTimerFired:(NSTimer *)timer
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:willMergeItemsWithReceiverIndex:fromIndex:)]) {
+        [_delegate ALGridView:self willMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem]];
+    }
+    NSDictionary *userIndfo = timer.userInfo;
+    _accepterItem = [userIndfo valueForKey:kAcceptItemUserInfoKey];
+    
+    _didMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDidMergeItemHoldInterval target:self selector:@selector(didMergeItemHoldTimerFired:) userInfo:nil repeats:NO];
+}
+
+- (void)didMergeItemHoldTimerFired:(NSTimer *)timer
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didMergeItemsWithReceiverIndex:fromIndex:touch:)]) {
+        [_delegate ALGridView:self didMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem] touch:_dragTouch];
     }
 }
 
