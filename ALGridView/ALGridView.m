@@ -30,6 +30,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 @interface ALGridView () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
 {
     ALGridViewItem *_dragItem;
+    ALGridViewItem *_accepterItem;
     CGFloat _rowSpacing;
     CGFloat _columnSpacing;
     UITapGestureRecognizer *_endEditingGesture;
@@ -55,40 +56,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
-        _rowSpacing = kDefaultRowSpacing;
-        _columnSpacing = kDefaultColumnSpacing;
-        _items = [NSMutableArray array];
-        _reuseQueue = [NSMutableDictionary dictionary];
-        _topMargin = kDefaultTopMargin;
-        _bottomMargin = kDefaultBottomMargin;
-        _leftMargin = kDefaultLeftMargin;
-        _editing = NO;
-        _canEnterEditing = YES;
-        _scrollMode = ALGridViewScrollModeVertical;
-        _offsetThreshold = frame.size.height / 4.0;
-        _lastOffsetY = 0.0f;
-        _springing = NO;
-        _dragTouch = nil;
-        _triggerEditingHolderTimer = nil;
-        _canCreateFolder = NO;
+        [self initVariates];
          
         self.multipleTouchEnabled = NO;
         self.clipsToBounds = YES;
         
-        _contentView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(frame), CGRectGetHeight(frame))];
-        _contentView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-        _contentView.showsHorizontalScrollIndicator = NO;
-        _contentView.showsVerticalScrollIndicator = NO;
-        _contentView.delaysContentTouches = YES;
-        _contentView.delegate = self;
-        _contentView.multipleTouchEnabled = NO;
-        _contentView.backgroundColor = [UIColor clearColor];
-        _contentView.bounces = NO;
-        _contentView.pagingEnabled = NO;
-        if ([_contentView respondsToSelector:@selector(setKeyboardDismissMode:)]) {
-            [_contentView setKeyboardDismissMode:UIScrollViewKeyboardDismissModeOnDrag];
-        }
-        [self addSubview:_contentView];
+        [self initContentView];
         
         _endEditingGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(triggerEndEditing:)];
 //        _endEditingGesture.numberOfTapsRequired = 1;
@@ -98,6 +71,46 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         [self addGestureRecognizer:_endEditingGesture];
     }
     return self;
+}
+
+- (void)initVariates
+{
+    _rowSpacing = kDefaultRowSpacing;
+    _columnSpacing = kDefaultColumnSpacing;
+    _items = [NSMutableArray array];
+    _reuseQueue = [NSMutableDictionary dictionary];
+    _topMargin = kDefaultTopMargin;
+    _bottomMargin = kDefaultBottomMargin;
+    _leftMargin = kDefaultLeftMargin;
+    _editing = NO;
+    _canEnterEditing = YES;
+    _scrollMode = ALGridViewScrollModeVertical;
+    _offsetThreshold = self.frame.size.height / 4.0;
+    _lastOffsetY = 0.0f;
+    _springing = NO;
+    _dragTouch = nil;
+    _dragItem = nil;
+    _accepterItem = nil;
+    _triggerEditingHolderTimer = nil;
+    _canCreateFolder = NO;
+}
+
+- (void)initContentView
+{
+    _contentView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds))];
+    _contentView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+    _contentView.showsHorizontalScrollIndicator = NO;
+    _contentView.showsVerticalScrollIndicator = NO;
+    _contentView.delaysContentTouches = YES;
+    _contentView.delegate = self;
+    _contentView.multipleTouchEnabled = NO;
+    _contentView.backgroundColor = [UIColor clearColor];
+    _contentView.bounces = YES;
+    _contentView.pagingEnabled = NO;
+    if ([_contentView respondsToSelector:@selector(setKeyboardDismissMode:)]) {
+        [_contentView setKeyboardDismissMode:UIScrollViewKeyboardDismissModeOnDrag];
+    }
+    [self addSubview:_contentView];
 }
 
 - (void)setDelegate:(id<ALGridViewDelegate>)delegate
@@ -124,8 +137,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         _contentView.pagingEnabled = (_scrollMode == ALGridViewScrollModeHorizontal);
         if (_scrollMode == ALGridViewScrollModeHorizontal) {
             _offsetThreshold = CGRectGetWidth(_contentView.bounds);
+            _contentView.bounces = NO;
         } else {
             _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
+            _contentView.bounces = YES;
         }
     }
 }
@@ -334,8 +349,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         }
     }
     [_items removeAllObjects];
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    
+    CGRect visibleRect = [self visibleRect];
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
+    
     if (_scrollMode == ALGridViewScrollModeHorizontal) {
         loadDataRect = CGRectInset(visibleRect, - CGRectGetWidth(_contentView.bounds), 0);
     }
@@ -345,9 +362,13 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     for (NSInteger i = 0; i < totalItemsNumber; i++) {
         [_items addObject:[NSNull null]];
     }
+    BOOL _isFoundFirstLoadItem = NO;
     for (NSInteger index = 0; index < totalItemsNumber; index++) {
         CGRect frame = [self frameForItemAtIndex:index];
         if (CGRectIntersectsRect(loadDataRect, frame)) {
+            if (!_isFoundFirstLoadItem) {
+                _isFoundFirstLoadItem = YES;
+            }
             if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
                 ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
                 item.frame = frame;
@@ -357,6 +378,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             } else {
                 NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method - ALGridView:itemAtIndex:" userInfo:nil];
                 [exception raise];
+            }
+        } else {
+            if (_isFoundFirstLoadItem) {
+                break;
             }
         }
     }
@@ -596,16 +621,33 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     }
 }
 
+- (CGRect)visibleRect
+{
+    return CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+}
+
 - (NSArray *)visibleItems
 {
     NSMutableArray *visibleItems = [NSMutableArray array];
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect visibleRect = [self visibleRect];
+    BOOL _isFoundFirstItem = NO;
     for (NSInteger index = 0; index < _items.count; index++) {
         ALGridViewItem *item = [_items objectAtIndex:index];
         if ([item isKindOfClass:[ALGridViewItem class]]) {
             CGRect frame = [self frameForItemAtIndex:index];
             if (CGRectIntersectsRect(visibleRect, frame)) {
+                if (!_isFoundFirstItem) {
+                    _isFoundFirstItem = YES;
+                }
                 [visibleItems addObject:item];
+            } else {
+                if (_isFoundFirstItem) {
+                    break;
+                }
+            }
+        } else {
+            if (_isFoundFirstItem) {
+                break;
             }
         }
     }
@@ -615,7 +657,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (NSArray *)indexsForVisibleItems
 {
     NSMutableArray *indexs = [NSMutableArray array];
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect visibleRect = [self visibleRect];
     for (NSInteger index = 0; index < _items.count; index++) {
         ALGridViewItem *item = [_items objectAtIndex:index];
         if ([item isKindOfClass:[ALGridViewItem class]]) {

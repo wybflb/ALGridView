@@ -45,7 +45,7 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 - (NSArray *)visibleItems;
 /**
  返回当前可见的items所有的index
- @return 包含所有可见item的index数组，数组对象为NSNumber类型，数值为对应的index值，如果没有可见item，返回空数组。
+ @return 包含所有可见item的index数组，数组对象为NSNumber类型，数值为对应的index的Integer值，如果没有可见item，返回空数组。
  */
 - (NSArray *)indexsForVisibleItems;
 

@@ -13,6 +13,8 @@
 {
     ALGridView *_gridView;
     NSMutableArray *_viewData;
+    
+    BOOL _isReloadData;
 }
 
 @end
@@ -32,6 +34,7 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    _isReloadData = NO;
     _viewData = [NSMutableArray array];
     for (int i = 0; i < 100; i++) {
         [_viewData addObject:[NSNull null]];
@@ -84,6 +87,28 @@
 //    NSLog(@"%s", __FUNCTION__);
 //}
 
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self performSelector:@selector(resetData) withObject:nil afterDelay:3];
+}
+
+- (void)resetData
+{
+    NSArray *array = [_gridView visibleItems];
+    for (NSInteger index = 0; index < array.count; index++) {
+        ALGridViewItem *item = [array objectAtIndex:index];
+        NSLog(@"%d,frame = %@", [_gridView indexOfItem:item], NSStringFromCGRect(item.frame));
+    }
+//    NSMutableArray *array = [NSMutableArray array];
+//    for (int i = 0; i < 20; i++) {
+//        [array addObject:[NSNull null]];
+//    }
+//    [_viewData addObjectsFromArray:array];
+//    _isReloadData = YES;
+//    [_gridView reloadData];
+}
+
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
@@ -114,6 +139,11 @@
 //        [item addTarget:self action:@selector(itemDidTouchDragExit:) forControlEvents:UIControlEventTouchDragExit];
     }
     item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
+//    if (_isReloadData) {
+//        item.label.text = [NSString stringWithFormat:@"%d row", index];
+//    } else {
+//        item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
+//    }
     item.backgroundColor = [UIColor grayColor];
     return item;
 }
