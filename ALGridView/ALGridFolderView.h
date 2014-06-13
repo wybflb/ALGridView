@@ -11,6 +11,7 @@
 
 @interface ALGridFolderView : UIView
 
-@property (nonatomic, retain) ALGridView *gridView;
+@property (nonatomic, copy) NSString *title;
+
 
 @end

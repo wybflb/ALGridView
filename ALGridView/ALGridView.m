@@ -47,6 +47,8 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
     NSTimer *_willMergeHoldTimer;
     NSTimer *_didMergeHoldTimer;
     NSTimer *_dragOutHoldTimer;
+    BOOL _isHoldTimer;
+    NSInteger _willReceiverIndex;
 }
 
 @property (nonatomic, strong) NSMutableArray *items;
@@ -80,10 +82,10 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 
 - (void)initVariates
 {
-    _rowSpacing = kDefaultRowSpacing;
-    _columnSpacing = kDefaultColumnSpacing;
     _items = [NSMutableArray array];
     _reuseQueue = [NSMutableDictionary dictionary];
+    _rowSpacing = kDefaultRowSpacing;
+    _columnSpacing = kDefaultColumnSpacing;
     _topMargin = kDefaultTopMargin;
     _bottomMargin = kDefaultBottomMargin;
     _leftMargin = kDefaultLeftMargin;
@@ -98,6 +100,8 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
     _accepterItem = nil;
     _triggerEditingHolderTimer = nil;
     _canCreateFolder = NO;
+    _willReceiverIndex = -2;
+    _isHoldTimer = NO;
 }
 
 - (void)initContentView
@@ -331,6 +335,8 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
     _springing = NO;
     _dragTouch = nil;
     _accepterItem = nil;
+    _isHoldTimer = NO;
+    _willReceiverIndex = -2;
     
     ALTimerInvalidate(_triggerEditingHolderTimer)
     ALTimerInvalidate(_springTimer)
@@ -540,7 +546,6 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 - (void)beginEditing
 {
     if (_editing) {
-        NSLog(@"return editing");
         return;
     }
     _editing = YES;
@@ -838,19 +843,90 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 //        return;
 //    }
     if (item) {
-        item.transform = CGAffineTransformIdentity;
+        [self removeShakeAnimationForItem:item];
+        item.transform = CGAffineTransformMakeScale(1.1, 1.1);
         [_contentView bringSubviewToFront:item];
         _dragItem = item;
+        UITouch *touch = [[event allTouches] anyObject];
+        _dragTouch = touch;
+//        CGPoint point = [touch locationInView:_contentView];
+//        _dragItem.center = point;
         
         if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didBeganDragItemAtIndex:)]) {
             NSInteger index = [self indexOfItem:_dragItem];
-            if (index != -1) {
-                [_delegate ALGridView:self didBeganDragItemAtIndex:index];
+            [_delegate ALGridView:self didBeganDragItemAtIndex:index];
+        }
+    }
+}
+
+- (void)updateCreateFolderIfNeed
+{
+    if (!_canCreateFolder) {
+        return;
+    }
+    CGPoint dragPoint = [_dragTouch locationInView:_contentView];
+    CGPoint dragPointInSelf = [_contentView convertPoint:dragPoint toView:self];
+//        CGRect dragFrameInSelf = [_contentView convertRect:_dragItem.frame toView:self];
+    if (!CGRectContainsPoint(self.bounds, dragPointInSelf)) {
+        if (!_dragOutHoldTimer) {
+            _dragOutHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDragOutHoldInterval target:self selector:@selector(dragOutHoldTimerDidFired:) userInfo:nil repeats:NO];
+        }
+    } else {
+        ALTimerInvalidate(_dragOutHoldTimer)
+    }
+    
+    if (_accepterItem) {
+        CGRect intersection = CGRectIntersection(_accepterItem.frame, _dragItem.frame);
+        BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= (_accepterItem.frame.size.height * _accepterItem.frame.size.width) * 2.0 / 3.0;
+        if (!isNeedMerge) {
+            _dragItem.transform = CGAffineTransformMakeScale(1.1, 1.1);
+            [self cancelMergeItems];
+            ALTimerInvalidate(_didMergeHoldTimer)
+        }
+    } else {
+        BOOL willSpring = NO;
+        if (_dragItem) {
+            CGRect dragItemFrame = [_contentView convertRect:_dragItem.frame toView:self];
+            if (_scrollMode == ALGridViewScrollModeVertical) {
+                if (dragItemFrame.origin.y < 0 || CGRectGetMaxY(dragItemFrame) > CGRectGetHeight(self.bounds)) {
+                    willSpring = YES;
+                }
+            } else {
+                if (dragItemFrame.origin.x < 0 || CGRectGetMaxX(dragItemFrame) > CGRectGetWidth(self.bounds)) {
+                    willSpring = YES;
+                }
             }
         }
-        
-        UITouch *touch = [[event allTouches] anyObject];
-        _dragTouch = touch;
+        if (!willSpring) {
+            NSArray *items = [self visibleItems];
+            for (NSInteger index = 0; index < items.count; index++) {
+                ALGridViewItem *item = [items objectAtIndex:index];
+                if (![item isKindOfClass:[ALGridViewItem class]]) {
+                    continue;
+                }
+                if ([item isEqual:_dragItem]) {
+                    continue;
+                }
+                CGRect intersection = CGRectIntersection(item.frame, _dragItem.frame);
+                BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= ((item.frame.size.height * item.frame.size.width) * 2.0 / 3.0);
+                if (isNeedMerge) {
+                        if (!_willMergeHoldTimer) {
+                            NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+                            [userInfo setObject:item forKey:kAcceptItemUserInfoKey];
+                            _willMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kWillMergeItemHoldInterval target:self selector:@selector(willMergeHoldTimerFired:) userInfo:userInfo repeats:NO];
+                            _isHoldTimer = YES;
+                            _willReceiverIndex = [self indexOfItem:item];
+                        }
+                } else {
+                    if (_isHoldTimer && ([self indexOfItem:item] == _willReceiverIndex)) {
+                        ALTimerInvalidate(_willMergeHoldTimer);
+                        _isHoldTimer = NO;
+                        _willReceiverIndex = -2;
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -873,64 +949,20 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
     _dragItem.dragging = YES;
     [_contentView bringSubviewToFront:_dragItem];
     
-    if (_canCreateFolder) {
-        CGPoint dragPointInSelf = [_contentView convertPoint:dragPoint toView:self];
-//        CGRect dragFrameInSelf = [_contentView convertRect:_dragItem.frame toView:self];
-        if (!CGRectContainsPoint(self.bounds, dragPointInSelf)) {
-            if (!_dragOutHoldTimer) {
-                _dragOutHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDragOutHoldInterval target:self selector:@selector(dragOutHoldTimerDidFired:) userInfo:nil repeats:NO];
-            }
-        } else {
-            ALTimerInvalidate(_dragOutHoldTimer)
-        }
-        
-        NSArray *items = [self visibleItems];
-        if (_accepterItem) {
-            CGRect intersection = CGRectIntersection(_accepterItem.frame, _dragItem.frame);
-            BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= (_accepterItem.frame.size.height * _accepterItem.frame.size.width) / 2.0;
-            if (!isNeedMerge) {
-                NSLog(@"a");
-                [self cancelMergeItems];
-                ALTimerInvalidate(_didMergeHoldTimer)
-            }
-        } else {
-            BOOL isHoldTimer = NO;
-            for (NSInteger index = 0; index < items.count; index++) {
-                ALGridViewItem *item = [items objectAtIndex:index];
-                if ([item isKindOfClass:[ALGridViewItem class]]) {
-                    if ([item isEqual:_dragItem]) {
-                        continue;
-                    }
-                    CGRect intersection = CGRectIntersection(item.frame, _dragItem.frame);
-                    BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= (item.frame.size.height * item.frame.size.width) / 2.0;
-                    if (isNeedMerge) {
-                        if (!_willMergeHoldTimer) {
-                            NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
-                            [userInfo setObject:item forKey:kAcceptItemUserInfoKey];
-                            _willMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kWillMergeItemHoldInterval target:self selector:@selector(willMergeHoldTimerFired:) userInfo:userInfo repeats:NO];
-                            isHoldTimer = YES;
-                        }
-                    } else {
-                        if (isHoldTimer) {
-                            ALTimerInvalidate(_willMergeHoldTimer);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
+    [self updateCreateFolderIfNeed];
+    [self updateSpring];
+}
+
+- (void)updateSpring
+{
     CGRect dragItemFrameInView = [_contentView convertRect:_dragItem.frame toView:self];
     CGSize itemSize = [self itemSize];
-    
     if (_scrollMode == ALGridViewScrollModeVertical) {
         CGFloat dragItemMaxY = CGRectGetMaxY(dragItemFrameInView);
         CGFloat selfHeight = CGRectGetHeight(self.bounds);
         CGFloat triggerSpringHeight = itemSize.height / 11.0;
         if (dragItemFrameInView.origin.y < 0 && (ABS(dragItemFrameInView.origin.y) >= triggerSpringHeight)) {
             if (_accepterItem) {
-                NSLog(@"b");
                 [self cancelMergeItems];
             }
             
@@ -939,7 +971,6 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
             }
         } else if (dragItemMaxY > selfHeight && ((dragItemMaxY - selfHeight) >= triggerSpringHeight)) {
             if (_accepterItem) {
-                NSLog(@"c");
                 [self cancelMergeItems];
             }
             
@@ -984,30 +1015,35 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 {
     if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didCancelMergeItemsWithReceiverIndex:fromIndex:)]) {
         NSInteger receiveIndex = [self indexOfItem:_accepterItem];
-        NSInteger fromIndex = _dragItem ? [self indexOfItem:_dragItem] : -1;
+        NSInteger fromIndex = [self indexOfItem:_dragItem];
     
         [_delegate ALGridView:self didCancelMergeItemsWithReceiverIndex:receiveIndex fromIndex:fromIndex];
     }
     ALTimerInvalidate(_willMergeHoldTimer)
     _accepterItem = nil;
+    _isHoldTimer = NO;
+    _willReceiverIndex = -2;
 }
 
 - (void)willMergeHoldTimerFired:(NSTimer *)timer
 {
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:willMergeItemsWithReceiverIndex:fromIndex:)]) {
-        [_delegate ALGridView:self willMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem]];
-    }
     NSDictionary *userIndfo = timer.userInfo;
     _accepterItem = [userIndfo valueForKey:kAcceptItemUserInfoKey];
     
+    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:willMergeItemsWithReceiverIndex:fromIndex:)]) {
+        [_delegate ALGridView:self willMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem]];
+    }
+    _dragItem.transform = CGAffineTransformMakeScale(0.9, 0.9);
     _didMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDidMergeItemHoldInterval target:self selector:@selector(didMergeItemHoldTimerFired:) userInfo:nil repeats:NO];
 }
 
 - (void)didMergeItemHoldTimerFired:(NSTimer *)timer
 {
     if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didMergeItemsWithReceiverIndex:fromIndex:touch:)]) {
-        [_delegate ALGridView:self didMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem] touch:_dragTouch];
+            [_delegate ALGridView:self didMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem] touch:_dragTouch];
     }
+    
+    ALTimerInvalidate(_didMergeHoldTimer)
 }
 
 - (void)springTimerDidFired:(NSTimer *)timer
@@ -1112,7 +1148,6 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 // called on finger up if the user dragged. decelerate is true if it will continue moving afterwards
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
-    NSLog(@"%s", __FUNCTION__);
     ALTimerInvalidate(_triggerEditingHolderTimer)
     if (_dragItem) {
         NSInteger index = [self indexOfItem:_dragItem];
@@ -1212,11 +1247,18 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [super touchesEnded:touches withEvent:event];
- 
+    
+    [self endTouch:touches];
+}
+
+- (void)endTouch:(NSSet *)touches
+{
     ALTimerInvalidate(_springTimer)
     ALTimerInvalidate(_triggerEditingHolderTimer)
     _springing = NO;
     if (_dragItem) {
+        _dragItem.transform = CGAffineTransformIdentity;
+        [self addShakeAnimationForItem:_dragItem];
         _dragItem.dragging = NO;
         if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didEndDragItemAtIndex:)]) {
             NSInteger index = [self indexOfItem:_dragItem];
@@ -1224,6 +1266,12 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
                 [_delegate ALGridView:self didEndDragItemAtIndex:index];
             }
         }
+        
+        ALTimerInvalidate(_willMergeHoldTimer)
+        if (_didMergeHoldTimer) {
+            [self cancelMergeItems];
+        }
+        ALTimerInvalidate(_didMergeHoldTimer)
         _dragItem = nil;
     }
     for (UITouch *touch in touches) {
@@ -1239,26 +1287,7 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 {
     [super touchesCancelled:touches withEvent:event];
     
-    ALTimerInvalidate(_springTimer)
-    ALTimerInvalidate(_triggerEditingHolderTimer)
-    _springing = NO;
-    if (_dragItem) {
-        _dragItem.dragging = NO;
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didEndDragItemAtIndex:)]) {
-            NSInteger index = [self indexOfItem:_dragItem];
-            if (index != -1) {
-                [_delegate ALGridView:self didEndDragItemAtIndex:index];
-            }
-        }
-        _dragItem = nil;
-    }
-    for (UITouch *touch in touches) {
-        if ([touch isEqual:_dragTouch]) {
-            _dragTouch = nil;
-            break;
-        }
-    }
-    [self layoutItemsIsNeedAnimation:YES];
+    [self endTouch:touches];
 }
 
 @end

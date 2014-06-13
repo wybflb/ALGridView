@@ -52,7 +52,6 @@
     self.editing = NO;
     self.dragging = NO;
     self.canDelete = YES;
-//    self.canMove = YES;
     self.canTriggerEdit = YES;
     self.canLeaveCurrentView = YES;
 }

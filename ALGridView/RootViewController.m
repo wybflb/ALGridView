@@ -118,7 +118,7 @@
 #pragma mark - ALGridViewDataSource
 - (NSInteger)numberOfItemsInGridView:(ALGridView *)gridView
 {
-    return _viewData.count;
+    return _viewData.count + 1;
 }
 
 - (NSInteger)numberOfColumnsInGridView:(ALGridView *)gridView
@@ -129,33 +129,48 @@
 - (ALGridViewItem *)ALGridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index
 {
     static NSString *reuserIdentifier = @"algridViewIdentifier";
-    ALGridViewItem *item = [gridView dequeueReusableItemWithIdentifier:reuserIdentifier];
-    if (!item) {
-        item = [[ALGridViewItem alloc] initWithReuseIdentifier:reuserIdentifier];
-//        [item addTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
-//        [item addTarget:self action:@selector(itemDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
-//        [item addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
-//        [item addTarget:self action:@selector(itemDidTouchCancel:) forControlEvents:UIControlEventTouchCancel];
-//        [item addTarget:self action:@selector(itemDidTouchDragExit:) forControlEvents:UIControlEventTouchDragExit];
+    static NSString *lastIdentifier = @"lastIdentifier";
+    ALGridViewItem *item = nil;
+    if (index == _viewData.count) {
+        item = [gridView dequeueReusableItemWithIdentifier:lastIdentifier];
+        if (!item) {
+            item = [[ALGridViewItem alloc] initWithReuseIdentifier:lastIdentifier];
+        }
+        item.label.text = @" + ";
+    } else {
+        item = [gridView dequeueReusableItemWithIdentifier:reuserIdentifier];
+        if (!item) {
+            item = [[ALGridViewItem alloc] initWithReuseIdentifier:reuserIdentifier];
+            //        [item addTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
+            //        [item addTarget:self action:@selector(itemDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
+            //        [item addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
+            //        [item addTarget:self action:@selector(itemDidTouchCancel:) forControlEvents:UIControlEventTouchCancel];
+            //        [item addTarget:self action:@selector(itemDidTouchDragExit:) forControlEvents:UIControlEventTouchDragExit];
+        }
+        item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
+        //    if (_isReloadData) {
+        //        item.label.text = [NSString stringWithFormat:@"%d row", index];
+        //    } else {
+        //        item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
+        //    }
     }
-    item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
-//    if (_isReloadData) {
-//        item.label.text = [NSString stringWithFormat:@"%d row", index];
-//    } else {
-//        item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
-//    }
-    item.backgroundColor = [UIColor grayColor];
+    CGFloat red = random() % 255;
+    CGFloat green = random() % 255;
+    CGFloat blue = random() % 255;
+    
+    item.backgroundColor = [UIColor colorWithRed:red/255.0 green:green/255.0 blue:blue/255.0 alpha:1];
+    
     return item;
 }
 
 - (BOOL)ALGridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index
 {
-    return (index != 0);
+    return (index != 0 && index != _viewData.count);
 }
 
 - (BOOL)ALGridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index
 {
-    return (index != 1);
+    return (index != 1 && index != _viewData.count);
 }
 
 #pragma mark - ALGridViewDelegate
@@ -172,6 +187,9 @@
 //    [_viewData removeObjectAtIndex:index];
 //    [_gridView deleteItemAtIndex:index isNeedAnimation:YES];
 //    [gridView deleteItemAtIndex:index animation:[self dropBookToCloudAnimation:[_gridView itemAtIndex:index]]];
+    if (index == _viewData.count) {
+        NSLog(@"点击了 加号");
+    }
 }
 
 - (CAAnimation *)dropBookToCloudAnimation:(ALGridViewItem *)cellToDelete
@@ -232,21 +250,33 @@
 //    NSLog(@"%s, %d", __FUNCTION__, index);
 //}
 
+- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView
+{
+    NSLog(@"start editing");
+}
+
+- (void)ALGridViewDidEndEditing:(ALGridView *)gridView
+{
+    NSLog(@"end editing");
+}
+
 - (void)ALGridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
 {
-    NSLog(@"will reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
     NSLog(@"%s", __FUNCTION__);
+    NSLog(@"will reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
+    
 }
 
 - (void)ALGridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
 {
+    NSLog(@"%s", __FUNCTION__);
     NSLog(@"did Cancel Merge reIndex:%d fromIndex: %d",receiverIndex, fromIndex);
 }
 
 - (void)ALGridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch
 {
-    NSLog(@"did reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
     NSLog(@"%s", __FUNCTION__);
+    NSLog(@"did reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
 }
 
 @end
