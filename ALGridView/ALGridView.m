@@ -28,8 +28,8 @@ const NSTimeInterval kDidMergeItemHoldInterval = 1.2;
 const NSTimeInterval kDragOutHoldInterval = 1.5;
 
 #define ALTimerInvalidate(_timer) if (_timer) {[(_timer) invalidate]; (_timer) = nil;}
-#define kTriggerEditingTimerItemKey @"triggerEditingTimerItemKey"
-#define kTriggerEditingTimerEventKey @"triggerEditingTimerEventKey"
+NSString *kTriggerEditingTimerItemKey = @"triggerEditingTimerItemKey";
+NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 @interface ALGridView () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
 {
@@ -407,7 +407,7 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
         return;
     }
     
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect visibleRect = [self visibleRect];
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
     if (_scrollMode == ALGridViewScrollModeHorizontal) {
         loadDataRect = CGRectInset(visibleRect, -_offsetThreshold, 0);
@@ -1148,16 +1148,16 @@ const NSTimeInterval kDragOutHoldInterval = 1.5;
 // called on finger up if the user dragged. decelerate is true if it will continue moving afterwards
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
-    ALTimerInvalidate(_triggerEditingHolderTimer)
-    if (_dragItem) {
-        NSInteger index = [self indexOfItem:_dragItem];
-        if (index == -1) {
-            return;
-        }
-        CGRect frame = [self frameForItemAtIndex:index];
-        _dragItem.frame = frame;
-        _dragItem = nil;
-    }
+//    ALTimerInvalidate(_triggerEditingHolderTimer)
+//    if (_dragItem) {
+//        NSInteger index = [self indexOfItem:_dragItem];
+//        if (index == -1) {
+//            return;
+//        }
+//        CGRect frame = [self frameForItemAtIndex:index];
+//        _dragItem.frame = frame;
+//        _dragItem = nil;
+//    }
     
     if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndDragging:willDecelerate:)]) {
         [_delegate ALGridViewDidEndDragging:self willDecelerate:decelerate];
