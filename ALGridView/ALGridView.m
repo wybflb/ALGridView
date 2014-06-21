@@ -90,7 +90,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     _bottomMargin = kDefaultBottomMargin;
     _leftMargin = kDefaultLeftMargin;
     _editing = NO;
-    _canEnterEditing = YES;
+    _canEdit = YES;
     _scrollMode = ALGridViewScrollModeVertical;
     _offsetThreshold = self.frame.size.height / 4.0;
     _lastOffsetY = 0.0f;
@@ -382,8 +382,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
             if (!_isFoundFirstLoadItem) {
                 _isFoundFirstLoadItem = YES;
             }
-            if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
-                ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
+            if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:itemAtIndex:)]) {
+                ALGridViewItem *item = [_dataSource gridView:self itemAtIndex:index];
                 item.frame = frame;
                 [self configEventsForItem:item];
                 [_items replaceObjectAtIndex:index withObject:item];
@@ -422,8 +422,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
             }
         } else {
             if (!item) {
-                if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
-                    ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
+                if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:itemAtIndex:)]) {
+                    ALGridViewItem *item = [_dataSource gridView:self itemAtIndex:index];
                     item.frame = frame;
                     item.editing = _editing;
                     [self configEventsForItem:item];
@@ -560,8 +560,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         
         [self addShakeAnimationForItem:item];
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidBeginEditing:)]) {
-        [_delegate ALGridViewDidBeginEditing:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidBeginEditing:)]) {
+        [_delegate gridViewDidBeginEditing:self];
     }
 }
 
@@ -617,8 +617,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         [self endEditingAnimationDidStop];
         [self layoutItemsIsNeedAnimation:NO];
         [self resetVariatesState];
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
-            [_delegate ALGridViewDidEndEditing:self];
+        if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndEditing:)]) {
+            [_delegate gridViewDidEndEditing:self];
         }
     }];
 }
@@ -752,12 +752,12 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     if (_editing) {
         return;
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didSelectItemAtIndex:)]) {
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didSelectItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:item];
         if (index != -1) {
             [item setSelected:YES];
             [self performSelector:@selector(deselectItem:) withObject:item afterDelay:0.2];
-            [_delegate ALGridView:self didSelectItemAtIndex:index];
+            [_delegate gridView:self didSelectItemAtIndex:index];
         }
     }
 }
@@ -771,7 +771,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (void)itemDidTouchDown:(ALGridViewItem *)item withEvent:(UIEvent *)event
 {
-    if (!_canEnterEditing) {
+    if (!_canEdit) {
         return;
     }
     if (_editing) {
@@ -779,12 +779,12 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
             [self startDragItem:item withEvent:event];
         }
     } else {
-        if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canTriggerEditAtIndex:)]) {
+        if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canTriggerEditAtIndex:)]) {
             NSInteger index = [self indexOfItem:item];
-            if (index == -1) {
+            if (index == -1 || index == NSNotFound) {
                 return;
             }
-            if ([_dataSource ALGridView:self canTriggerEditAtIndex:index]) {
+            if ([_dataSource gridView:self canTriggerEditAtIndex:index]) {
                 [self startTriggerEditingTimerWithTouchItem:item event:event];
             }
         } else {
@@ -819,8 +819,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 {
     ALGridViewItem *item = (ALGridViewItem *)button.superview;
     if ([item isKindOfClass:[ALGridViewItem class]]) {
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didTapedDeleteButtonWithIndex:)]) {
-            [_delegate ALGridView:self didTapedDeleteButtonWithIndex:item.index];
+        if (_delegate && [_delegate respondsToSelector:@selector(gridView:didTapedDeleteButtonWithIndex:)]) {
+            [_delegate gridView:self didTapedDeleteButtonWithIndex:item.index];
         }
     }
 }
@@ -828,12 +828,12 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 - (void)startDragItem:(ALGridViewItem *)item withEvent:(UIEvent *)event
 {
     ALTimerInvalidate(_springTimer)
-    if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
+    if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:item];
         if (index == -1) {
             return;
         }
-        BOOL canMove = [_dataSource ALGridView:self canMoveItemAtIndex:index];
+        BOOL canMove = [_dataSource gridView:self canMoveItemAtIndex:index];
         if (!canMove) {
             return;
         }
@@ -852,9 +852,9 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 //        CGPoint point = [touch locationInView:_contentView];
 //        _dragItem.center = point;
         
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didBeganDragItemAtIndex:)]) {
+        if (_delegate && [_delegate respondsToSelector:@selector(gridView:didBeganDragItemAtIndex:)]) {
             NSInteger index = [self indexOfItem:_dragItem];
-            [_delegate ALGridView:self didBeganDragItemAtIndex:index];
+            [_delegate gridView:self didBeganDragItemAtIndex:index];
         }
     }
 }
@@ -935,12 +935,12 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     if (!_dragItem) {
         return;
     }
-    if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
+    if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:_dragItem];
         if (index == -1) {
             return;
         }
-        if (![_dataSource ALGridView:self canMoveItemAtIndex:index]) {
+        if (![_dataSource gridView:self canMoveItemAtIndex:index]) {
             return;
         }
     }
@@ -1006,18 +1006,18 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (void)dragOutHoldTimerDidFired:(NSTimer *)timer
 {
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didDraggedOutItemAtIndex:)]) {
-        [_delegate ALGridView:self didDraggedOutItemAtIndex:[self indexOfItem:_dragItem]];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didDraggedOutItemAtIndex:)]) {
+        [_delegate gridView:self didDraggedOutItemAtIndex:[self indexOfItem:_dragItem]];
     }
 }
 
 - (void)cancelMergeItems
 {
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didCancelMergeItemsWithReceiverIndex:fromIndex:)]) {
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didCancelMergeItemsWithReceiverIndex:fromIndex:)]) {
         NSInteger receiveIndex = [self indexOfItem:_accepterItem];
         NSInteger fromIndex = [self indexOfItem:_dragItem];
     
-        [_delegate ALGridView:self didCancelMergeItemsWithReceiverIndex:receiveIndex fromIndex:fromIndex];
+        [_delegate gridView:self didCancelMergeItemsWithReceiverIndex:receiveIndex fromIndex:fromIndex];
     }
     ALTimerInvalidate(_willMergeHoldTimer)
     _accepterItem = nil;
@@ -1030,8 +1030,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     NSDictionary *userIndfo = timer.userInfo;
     _accepterItem = [userIndfo valueForKey:kAcceptItemUserInfoKey];
     
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:willMergeItemsWithReceiverIndex:fromIndex:)]) {
-        [_delegate ALGridView:self willMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem]];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:willMergeItemsWithReceiverIndex:fromIndex:)]) {
+        [_delegate gridView:self willMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem]];
     }
     _dragItem.transform = CGAffineTransformMakeScale(0.9, 0.9);
     _didMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDidMergeItemHoldInterval target:self selector:@selector(didMergeItemHoldTimerFired:) userInfo:nil repeats:NO];
@@ -1039,8 +1039,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (void)didMergeItemHoldTimerFired:(NSTimer *)timer
 {
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didMergeItemsWithReceiverIndex:fromIndex:touch:)]) {
-            [_delegate ALGridView:self didMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem] touch:_dragTouch];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didMergeItemsWithReceiverIndex:fromIndex:touch:)]) {
+            [_delegate gridView:self didMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem] touch:_dragTouch];
     }
     
     ALTimerInvalidate(_didMergeHoldTimer)
@@ -1124,8 +1124,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
             [self removeAndAddItemsIfNecessary];
         }
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScroll:)]) {
-        [_delegate ALGridViewDidScroll:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidScroll:)]) {
+        [_delegate gridViewDidScroll:self];
     }
 }
 
@@ -1133,8 +1133,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
 //     NSLog(@"%s", __FUNCTION__);
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewWillBeginDragging:)]) {
-        [_delegate ALGridViewWillBeginDragging:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewWillBeginDragging:)]) {
+        [_delegate gridViewWillBeginDragging:self];
     }
 }
 
@@ -1159,8 +1159,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 //        _dragItem = nil;
 //    }
     
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndDragging:willDecelerate:)]) {
-        [_delegate ALGridViewDidEndDragging:self willDecelerate:decelerate];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndDragging:willDecelerate:)]) {
+        [_delegate gridViewDidEndDragging:self willDecelerate:decelerate];
     }
 }
 
@@ -1168,8 +1168,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
 {
 //     NSLog(@"%s", __FUNCTION__);
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewWillBeginDecelerating:)]) {
-        [_delegate ALGridViewWillBeginDecelerating:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewWillBeginDecelerating:)]) {
+        [_delegate gridViewWillBeginDecelerating:self];
     }
 }
 
@@ -1177,8 +1177,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
 //    NSLog(@"%s", __FUNCTION__);
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndDecelerating:)]) {
-        [_delegate ALGridViewDidEndDecelerating:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndDecelerating:)]) {
+        [_delegate gridViewDidEndDecelerating:self];
     }
 }
 
@@ -1192,16 +1192,16 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         _dragItem.center = center;
         [self updateDragTouch];
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndScrollingAnimation:)]) {
-        [_delegate ALGridViewDidEndScrollingAnimation:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndScrollingAnimation:)]) {
+        [_delegate gridViewDidEndScrollingAnimation:self];
     }
 }
 
 - (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
 {
     [self resetAllVisibleItems]; //是否必须
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScrollToTop:)]) {
-        [_delegate ALGridViewDidScrollToTop:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidScrollToTop:)]) {
+        [_delegate gridViewDidScrollToTop:self];
     }
 }
 
@@ -1260,10 +1260,10 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         _dragItem.transform = CGAffineTransformIdentity;
         [self addShakeAnimationForItem:_dragItem];
         _dragItem.dragging = NO;
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didEndDragItemAtIndex:)]) {
+        if (_delegate && [_delegate respondsToSelector:@selector(gridView:didEndDragItemAtIndex:)]) {
             NSInteger index = [self indexOfItem:_dragItem];
             if (index != -1) {
-                [_delegate ALGridView:self didEndDragItemAtIndex:index];
+                [_delegate gridView:self didEndDragItemAtIndex:index];
             }
         }
         

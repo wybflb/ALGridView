@@ -46,7 +46,7 @@
     _gridView.topMargin = 30;
     _gridView.bottomMargin = 30;
     _gridView.leftMargin = 10;
-    _gridView.canEnterEditing = YES;
+    _gridView.canEdit = YES;
     _gridView.canCreateFolder = YES;
     [self.view addSubview:_gridView];
     
@@ -126,7 +126,7 @@
     return 3;
 }
 
-- (ALGridViewItem *)ALGridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index
+- (ALGridViewItem *)gridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index
 {
     static NSString *reuserIdentifier = @"algridViewIdentifier";
     static NSString *lastIdentifier = @"lastIdentifier";
@@ -163,12 +163,12 @@
     return item;
 }
 
-- (BOOL)ALGridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index
+- (BOOL)gridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index
 {
     return (index != 0 && index != _viewData.count);
 }
 
-- (BOOL)ALGridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index
+- (BOOL)gridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index
 {
     return (index != 1 && index != _viewData.count);
 }
@@ -179,7 +179,7 @@
     return CGSizeMake(90, 90);
 }
 
-- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index
+- (void)gridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index
 {
 //    CAAnimation *animation = [CAAnimation animation];
 //    animation.duration = 0.3;
@@ -240,40 +240,40 @@
     return 10;
 }
 
-//- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index
+//- (void)gridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index
 //{
 //    NSLog(@"%s, %d", __FUNCTION__, index);
 //}
 //
-//- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index
+//- (void)gridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index
 //{
 //    NSLog(@"%s, %d", __FUNCTION__, index);
 //}
 
-- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView
+- (void)gridViewDidBeginEditing:(ALGridView *)gridView
 {
     NSLog(@"start editing");
 }
 
-- (void)ALGridViewDidEndEditing:(ALGridView *)gridView
+- (void)gridViewDidEndEditing:(ALGridView *)gridView
 {
     NSLog(@"end editing");
 }
 
-- (void)ALGridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
+- (void)gridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
 {
     NSLog(@"%s", __FUNCTION__);
     NSLog(@"will reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
     
 }
 
-- (void)ALGridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
+- (void)gridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex
 {
     NSLog(@"%s", __FUNCTION__);
     NSLog(@"did Cancel Merge reIndex:%d fromIndex: %d",receiverIndex, fromIndex);
 }
 
-- (void)ALGridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch
+- (void)gridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch
 {
     NSLog(@"%s", __FUNCTION__);
     NSLog(@"did reIndex : %d fromIndex : %d", receiverIndex, fromIndex);

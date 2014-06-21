@@ -13,8 +13,8 @@
 @protocol ALGridViewDelegate;
 
 typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
-    ALGridViewScrollModeVertical, /** 垂直滚动*/
-    ALGridViewScrollModeHorizontal, /** 横向滚动*/
+    ALGridViewScrollModeVertical, /**< 垂直滚动*/
+    ALGridViewScrollModeHorizontal, /**< 横向滚动*/
 };
 
 @interface ALGridView : UIView
@@ -29,7 +29,7 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @property (nonatomic, assign) CGFloat bottomMargin;
 @property (nonatomic, assign) CGFloat leftMargin;
 @property (nonatomic, readonly) BOOL scrollEnabled;
-@property (nonatomic, assign) BOOL canEnterEditing; /**< 是否可进入编辑状态，默认为YES*/
+@property (nonatomic, assign) BOOL canEdit; /**< 是否可进入编辑状态，默认为YES*/
 @property (nonatomic, getter = isEditing, assign) BOOL editing;
 @property (nonatomic, assign) ALGridViewScrollMode scrollMode; //the default value is ALGridViewScrollModeVertical
 @property (nonatomic, assign) BOOL canCreateFolder; //是否支持编辑状态合并两个item，创建文件夹，默认为NO。
@@ -57,39 +57,40 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @required
 - (NSInteger)numberOfItemsInGridView:(ALGridView *)gridView;
 - (NSInteger)numberOfColumnsInGridView:(ALGridView *)gridView;
-- (ALGridViewItem *)ALGridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index;
+- (ALGridViewItem *)gridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index;
 @optional
-- (BOOL)ALGridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index;
-- (BOOL)ALGridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index;
+- (BOOL)gridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index;
+- (BOOL)gridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index;
 @end
 
 @protocol ALGridViewDelegate <NSObject>
 @required
 - (CGSize)itemSizeForGridView:(ALGridView *)gridView;
 @optional
-- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;//
+- (void)gridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;//
 - (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;//
 - (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;//
 
-- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView;//
-- (void)ALGridViewDidEndEditing:(ALGridView *)gridView;//
+- (void)gridViewDidBeginEditing:(ALGridView *)gridView;//
+- (void)gridViewDidEndEditing:(ALGridView *)gridView;//
 
-- (void)ALGridViewDidScroll:(ALGridView *)gridView;//
-- (void)ALGridViewWillBeginDragging:(ALGridView *)gridView;//
-- (void)ALGridViewDidEndDragging:(ALGridView *)gridView willDecelerate:(BOOL)decelerate;//
-- (void)ALGridViewWillBeginDecelerating:(ALGridView *)gridView;//
-- (void)ALGridViewDidEndDecelerating:(ALGridView *)gridView;//
-- (void)ALGridViewDidEndScrollingAnimation:(ALGridView *)gridView;//
-- (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;//
+- (void)gridViewDidScroll:(ALGridView *)gridView;//
+- (void)gridViewWillBeginDragging:(ALGridView *)gridView;//
+- (void)gridViewDidEndDragging:(ALGridView *)gridView willDecelerate:(BOOL)decelerate;//
+- (void)gridViewWillBeginDecelerating:(ALGridView *)gridView;//
+- (void)gridViewDidEndDecelerating:(ALGridView *)gridView;//
+- (void)gridViewDidEndScrollingAnimation:(ALGridView *)gridView;//
+- (void)gridViewDidScrollToTop:(ALGridView *)gridView;//
 
-- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;//
-- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;//
+- (void)gridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;//
+- (void)gridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;//
 
-- (void)ALGridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
-- (void)ALGridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
-- (void)ALGridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch;//
+- (void)gridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
+- (void)gridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
+- (void)gridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch;//
 
-- (void)ALGridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
+- (void)gridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
 
-- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
+- (void)gridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
+
 @end
