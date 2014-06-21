@@ -88,6 +88,7 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 - (void)gridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
 - (void)gridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
 - (void)gridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch;//
+- (BOOL)gridView:(ALGridView *)gridView canReceiveOtherItemAtIndex:(NSInteger)index;//
 
 - (void)gridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
 

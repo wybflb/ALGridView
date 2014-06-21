@@ -279,4 +279,9 @@
     NSLog(@"did reIndex : %d fromIndex : %d", receiverIndex, fromIndex);
 }
 
+- (BOOL)gridView:(ALGridView *)gridView canReceiveOtherItemAtIndex:(NSInteger)index
+{
+    return (index != _viewData.count);
+}
+
 @end

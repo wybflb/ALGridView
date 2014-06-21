@@ -159,7 +159,6 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     [super layoutSubviews];
     
     _contentView.alwaysBounceVertical = YES;
-//    _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
     [self updateScrollViewContentSize];
 }
 
@@ -435,7 +434,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
                         [self removeShakeAnimationForItem:item];
                     }
                 } else {
-                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method ALGridView:itemAtIndex:" userInfo:nil];
+                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method -ALGridView:itemAtIndex:" userInfo:nil];
                     [exception raise];
                 }
             }
@@ -529,8 +528,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 - (void)setEditing:(BOOL)editing
 {
     if (_editing != editing) {
-        _editing = editing;
-        if (_editing) {
+        if (editing) {
             [self beginEditing];
         } else {
             [self endEditing];
@@ -582,7 +580,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (void)removeShakeAnimationForItem:(ALGridViewItem *)item
 {
-    if ([item isKindOfClass:[ALGridViewItem class]]) {
+    if (item && [item isKindOfClass:[ALGridViewItem class]]) {
         [item.layer removeAnimationForKey:kShakeAnimationKey];
     }
 }
@@ -830,18 +828,13 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     ALTimerInvalidate(_springTimer)
     if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:item];
-        if (index == -1) {
+        if (index == -1 || index == NSNotFound) {
             return;
         }
-        BOOL canMove = [_dataSource gridView:self canMoveItemAtIndex:index];
-        if (!canMove) {
+        if (![_dataSource gridView:self canMoveItemAtIndex:index]) {
             return;
         }
     }
-
-//    if (!item.canMove) {
-//        return;
-//    }
     if (item) {
         [self removeShakeAnimationForItem:item];
         item.transform = CGAffineTransformMakeScale(1.1, 1.1);
@@ -901,11 +894,13 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
             NSArray *items = [self visibleItems];
             for (NSInteger index = 0; index < items.count; index++) {
                 ALGridViewItem *item = [items objectAtIndex:index];
-                if (![item isKindOfClass:[ALGridViewItem class]]) {
+                if (![item isKindOfClass:[ALGridViewItem class]] || [item isEqual:_dragItem]) {
                     continue;
                 }
-                if ([item isEqual:_dragItem]) {
-                    continue;
+                if (_delegate && [_delegate respondsToSelector:@selector(gridView:canReceiveOtherItemAtIndex:)]) {
+                    if (![_delegate gridView:self canReceiveOtherItemAtIndex:[self indexOfItem:item]]) {
+                        continue;
+                    }
                 }
                 CGRect intersection = CGRectIntersection(item.frame, _dragItem.frame);
                 BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= ((item.frame.size.height * item.frame.size.width) * 2.0 / 3.0);
@@ -1111,7 +1106,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     if (_scrollMode == ALGridViewScrollModeHorizontal) {
         contentOffset = _contentView.contentOffset.x;
     }
-    //用户可能在为0的时候，向上/左 拖拽
+    //用户可能在contentOffset为0的时候，向上/左 拖拽
     if (contentOffset > 0) {
         CGFloat diff = 0;
 #if __LP64__
@@ -1209,26 +1204,6 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [super touchesBegan:touches withEvent:event];
-   
-//    _dragTouch = [touches anyObject];
-//    CGPoint touchPoint = [_dragTouch locationInView:_contentView];
-//    for (ALGridViewItem *item in _items) {
-//        if (![item isKindOfClass:[ALGridViewItem class]]) {
-//            continue;
-//        }
-//        if (CGRectContainsPoint(item.frame, touchPoint)) {
-//            if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didBeganDragItemAtIndex:)]) {
-//                NSInteger index = [self indexOfItem:item];
-//                if (index != -1) {
-//                    NSLog(@"%s", __FUNCTION__);
-//                    [_delegate ALGridView:self didBeganDragItemAtIndex:index];
-//                }
-//            }
-//            _dragItem = item;
-//            _dragItem.dragging = YES;
-//            break;
-//        }
-//    }
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
