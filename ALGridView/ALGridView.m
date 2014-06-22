@@ -178,6 +178,9 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (NSInteger)numberOfPagesForHorizontalScroll
 {
+    if (_scrollMode != ALGridViewScrollModeHorizontal) {
+        return -1;
+    }
     NSInteger itemCount = [self numberOfItems];
     return (itemCount / [self numberOfItemsPerPageForHorizontalScroll]) + (itemCount % [self numberOfItemsPerPageForHorizontalScroll] == 0 ? 0 : 1);
 }
