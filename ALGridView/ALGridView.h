@@ -13,8 +13,8 @@
 @protocol ALGridViewDelegate;
 
 typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
-    ALGridViewScrollModeVertical, /** 垂直滚动*/
-    ALGridViewScrollModeHorizontal, /** 横向滚动*/
+    ALGridViewScrollModeVertical, /**< 垂直滚动*/
+    ALGridViewScrollModeHorizontal, /**< 横向滚动*/
 };
 
 @interface ALGridView : UIView
@@ -29,9 +29,10 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @property (nonatomic, assign) CGFloat bottomMargin;
 @property (nonatomic, assign) CGFloat leftMargin;
 @property (nonatomic, readonly) BOOL scrollEnabled;
-@property (nonatomic, assign) BOOL canEnterEditing; /**< 是否可进入编辑状态，默认为YES*/
+@property (nonatomic, assign) BOOL canEdit; /**< 是否可进入编辑状态，默认为YES*/
 @property (nonatomic, getter = isEditing, assign) BOOL editing;
-@property (nonatomic, assign) ALGridViewScrollMode scrollMode; //the default value is ALGridViewScrollModeVertical
+@property (nonatomic, assign) ALGridViewScrollMode scrollMode; /**< the default value is ALGridViewScrollModeVertical */
+@property (nonatomic, assign) BOOL canCreateFolder; /**< 是否支持编辑状态合并两个item，创建文件夹，默认为NO。*/
 
 - (void)reloadData;
 - (ALGridViewItem *)itemAtIndex:(NSUInteger)index;
@@ -39,12 +40,17 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 - (ALGridViewItem *)dequeueReusableItemWithIdentifier:(NSString *)reuseIdentifier;
 - (void)deleteItemAtIndex:(NSUInteger)index isNeedAnimation:(BOOL)needAnimation;
 - (void)deleteItemAtIndex:(NSUInteger)index animation:(CAAnimation *)animation;
-- (NSInteger)numberOfPagesForHorizontalScroll;
 
+/**
+ get the pages number for the horizontal scroll mode
+ @attention this method is only used when the property of scrollMode is set to ALGridViewScrollModeHorizontal.if current scollMode is ALGridViewScrollModeVertical,this method return -1.
+
+ */
+- (NSInteger)numberOfPagesForHorizontalScroll;
 - (NSArray *)visibleItems;
 /**
  返回当前可见的items所有的index
- @return 包含所有可见item的index数组，数组对象为NSNumber类型，数值为对应的index值，如果没有可见item，返回空数组。
+ @return 包含所有可见item的index数组，数组对象为NSNumber类型，数值为对应的index的Integer值，如果没有可见item，返回空数组。
  */
 - (NSArray *)indexsForVisibleItems;
 
@@ -56,28 +62,45 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @required
 - (NSInteger)numberOfItemsInGridView:(ALGridView *)gridView;
 - (NSInteger)numberOfColumnsInGridView:(ALGridView *)gridView;
-- (ALGridViewItem *)ALGridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index;
+- (ALGridViewItem *)gridView:(ALGridView *)gridView itemAtIndex:(NSInteger)index;
 @optional
-- (BOOL)ALGridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index;
-- (BOOL)ALGridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index;
+- (BOOL)gridView:(ALGridView *)gridView canMoveItemAtIndex:(NSInteger)index;
+- (BOOL)gridView:(ALGridView *)gridView canTriggerEditAtIndex:(NSInteger)index;
 @end
 
 @protocol ALGridViewDelegate <NSObject>
 @required
 - (CGSize)itemSizeForGridView:(ALGridView *)gridView;
 @optional
-- (void)ALGridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;
-- (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;
-- (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;
-- (void)ALGridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didDraggedItemAtIndex:(NSInteger)sourceIndex intoItemAtIndex:(NSInteger)destinationIndex withTouch:(UITouch *)touch;
-- (void)ALGridViewDidBeginEditing:(ALGridView *)gridView;
-- (void)ALGridViewDidEndEditing:(ALGridView *)gridView;
-- (void)ALGridView:(ALGridView *)gridView scrollViewDidScroll:(UIScrollView *)scrollView;
-- (void)ALGridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;
-- (void)ALGridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;
+- (void)gridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;//
+- (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;//
+- (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;//
 
-- (void)ALGridViewDidScroll:(ALGridView *)gridView;
-- (void)ALGridViewDidScrollToTop:(ALGridView *)gridView;
+- (void)gridViewDidBeginEditing:(ALGridView *)gridView;//
+- (void)gridViewDidEndEditing:(ALGridView *)gridView;//
+
+- (void)gridViewDidScroll:(ALGridView *)gridView;//any offset changes
+//called on start of dragging (may require some time and or distance to move)
+- (void)gridViewWillBeginDragging:(ALGridView *)gridView;
+//called on finger up if the user dragged. decelerate is true if it will continue moving afterwards.
+- (void)gridViewDidEndDragging:(ALGridView *)gridView willDecelerate:(BOOL)decelerate;
+- (void)gridViewWillBeginDecelerating:(ALGridView *)gridView;//called on finger up as we are moving
+- (void)gridViewDidEndDecelerating:(ALGridView *)gridView;//called when scroll view grinds to a halt
+//called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
+- (void)gridViewDidEndScrollingAnimation:(ALGridView *)gridView;
+//called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
+- (void)gridViewDidScrollToTop:(ALGridView *)gridView;
+
+- (void)gridView:(ALGridView *)gridView didBeganDragItemAtIndex:(NSInteger)index;//
+- (void)gridView:(ALGridView *)gridView didEndDragItemAtIndex:(NSInteger)index;//
+
+- (void)gridView:(ALGridView *)gridView willMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
+- (void)gridView:(ALGridView *)gridView didCancelMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex;//
+- (void)gridView:(ALGridView *)gridView didMergeItemsWithReceiverIndex:(NSInteger)receiverIndex fromIndex:(NSInteger)fromIndex touch:(UITouch *)touch;//
+- (BOOL)gridView:(ALGridView *)gridView canReceiveOtherItemAtIndex:(NSInteger)index;//
+
+- (void)gridView:(ALGridView *)gridView didDraggedOutItemAtIndex:(NSInteger)index;
+
+- (void)gridView:(ALGridView *)gridView didTapedDeleteButtonWithIndex:(NSInteger)index;
+
 @end

@@ -7,7 +7,11 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "ALGridView.h"
 
 @interface ALGridFolderView : UIView
+
+@property (nonatomic, copy) NSString *title;
+
 
 @end

@@ -18,7 +18,7 @@
         self.dragging = NO;
         self.editing = NO;
         self.canDelete = YES;
-        self.canMove = YES;
+//        self.canMove = YES;
         self.canTriggerEdit = YES;
         self.canLeaveCurrentView = YES;
         self.label = [[UILabel alloc] initWithFrame:CGRectZero];
@@ -52,7 +52,6 @@
     self.editing = NO;
     self.dragging = NO;
     self.canDelete = YES;
-    self.canMove = YES;
     self.canTriggerEdit = YES;
     self.canLeaveCurrentView = YES;
 }

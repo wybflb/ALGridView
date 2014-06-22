@@ -19,17 +19,22 @@ NSUInteger kDefaultReuseItemsNumber = 15;
 
 NSString *kShakeAnimationKey = @"shakeAnimation";
 NSString *kDeleteItemAnimationKey = @"deleteItemAnimationKey";
+NSString *kAcceptItemUserInfoKey = @"acceptItemUserInfoKey";
 
 const NSTimeInterval kEnterEditingHoldInterval = 1.0;
 const NSTimeInterval kSpringHoldInterval = 1.0;
+const NSTimeInterval kWillMergeItemHoldInterval = 0.8;
+const NSTimeInterval kDidMergeItemHoldInterval = 1.2;
+const NSTimeInterval kDragOutHoldInterval = 1.5;
 
 #define ALTimerInvalidate(_timer) if (_timer) {[(_timer) invalidate]; (_timer) = nil;}
-#define kTriggerEditingTimerItemKey @"triggerEditingTimerItemKey"
-#define kTriggerEditingTimerEventKey @"triggerEditingTimerEventKey"
+NSString *kTriggerEditingTimerItemKey = @"triggerEditingTimerItemKey";
+NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 @interface ALGridView () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
 {
     ALGridViewItem *_dragItem;
+    ALGridViewItem *_accepterItem;
     CGFloat _rowSpacing;
     CGFloat _columnSpacing;
     UITapGestureRecognizer *_endEditingGesture;
@@ -39,7 +44,11 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     UITouch *_dragTouch;
     NSTimer *_triggerEditingHolderTimer;
     NSTimer *_springTimer;
-//    NSTimer *_item
+    NSTimer *_willMergeHoldTimer;
+    NSTimer *_didMergeHoldTimer;
+    NSTimer *_dragOutHoldTimer;
+    BOOL _isHoldTimer;
+    NSInteger _willReceiverIndex;
 }
 
 @property (nonatomic, strong) NSMutableArray *items;
@@ -54,39 +63,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
-        _rowSpacing = kDefaultRowSpacing;
-        _columnSpacing = kDefaultColumnSpacing;
-        _items = [NSMutableArray array];
-        _reuseQueue = [NSMutableDictionary dictionary];
-        _topMargin = kDefaultTopMargin;
-        _bottomMargin = kDefaultBottomMargin;
-        _leftMargin = kDefaultLeftMargin;
-        _editing = NO;
-        _canEnterEditing = YES;
-        _scrollMode = ALGridViewScrollModeVertical;
-        _offsetThreshold = frame.size.height / 4.0;
-        _lastOffsetY = 0.0f;
-        _springing = NO;
-        _dragTouch = nil;
-        _triggerEditingHolderTimer = nil;
+        [self initVariates];
          
         self.multipleTouchEnabled = NO;
         self.clipsToBounds = YES;
         
-        _contentView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(frame), CGRectGetHeight(frame))];
-        _contentView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-        _contentView.showsHorizontalScrollIndicator = NO;
-        _contentView.showsVerticalScrollIndicator = NO;
-        _contentView.delaysContentTouches = YES;
-        _contentView.delegate = self;
-        _contentView.multipleTouchEnabled = NO;
-        _contentView.backgroundColor = [UIColor clearColor];
-        _contentView.bounces = NO;
-        _contentView.pagingEnabled = NO;
-        if ([_contentView respondsToSelector:@selector(setKeyboardDismissMode:)]) {
-            [_contentView setKeyboardDismissMode:UIScrollViewKeyboardDismissModeOnDrag];
-        }
-        [self addSubview:_contentView];
+        [self initContentView];
         
         _endEditingGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(triggerEndEditing:)];
 //        _endEditingGesture.numberOfTapsRequired = 1;
@@ -96,6 +78,48 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         [self addGestureRecognizer:_endEditingGesture];
     }
     return self;
+}
+
+- (void)initVariates
+{
+    _items = [NSMutableArray array];
+    _reuseQueue = [NSMutableDictionary dictionary];
+    _rowSpacing = kDefaultRowSpacing;
+    _columnSpacing = kDefaultColumnSpacing;
+    _topMargin = kDefaultTopMargin;
+    _bottomMargin = kDefaultBottomMargin;
+    _leftMargin = kDefaultLeftMargin;
+    _editing = NO;
+    _canEdit = YES;
+    _scrollMode = ALGridViewScrollModeVertical;
+    _offsetThreshold = self.frame.size.height / 4.0;
+    _lastOffsetY = 0.0f;
+    _springing = NO;
+    _dragTouch = nil;
+    _dragItem = nil;
+    _accepterItem = nil;
+    _triggerEditingHolderTimer = nil;
+    _canCreateFolder = NO;
+    _willReceiverIndex = -2;
+    _isHoldTimer = NO;
+}
+
+- (void)initContentView
+{
+    _contentView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds))];
+    _contentView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+    _contentView.showsHorizontalScrollIndicator = NO;
+    _contentView.showsVerticalScrollIndicator = NO;
+    _contentView.delaysContentTouches = YES;
+    _contentView.delegate = self;
+    _contentView.multipleTouchEnabled = NO;
+    _contentView.backgroundColor = [UIColor clearColor];
+    _contentView.bounces = YES;
+    _contentView.pagingEnabled = NO;
+    if ([_contentView respondsToSelector:@selector(setKeyboardDismissMode:)]) {
+        [_contentView setKeyboardDismissMode:UIScrollViewKeyboardDismissModeOnDrag];
+    }
+    [self addSubview:_contentView];
 }
 
 - (void)setDelegate:(id<ALGridViewDelegate>)delegate
@@ -122,8 +146,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         _contentView.pagingEnabled = (_scrollMode == ALGridViewScrollModeHorizontal);
         if (_scrollMode == ALGridViewScrollModeHorizontal) {
             _offsetThreshold = CGRectGetWidth(_contentView.bounds);
+            _contentView.bounces = NO;
         } else {
             _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
+            _contentView.bounces = YES;
         }
     }
 }
@@ -133,7 +159,6 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     [super layoutSubviews];
     
     _contentView.alwaysBounceVertical = YES;
-//    _offsetThreshold = CGRectGetHeight(_contentView.bounds) / 4.0;
     [self updateScrollViewContentSize];
 }
 
@@ -153,6 +178,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 
 - (NSInteger)numberOfPagesForHorizontalScroll
 {
+    if (_scrollMode != ALGridViewScrollModeHorizontal) {
+        return -1;
+    }
     NSInteger itemCount = [self numberOfItems];
     return (itemCount / [self numberOfItemsPerPageForHorizontalScroll]) + (itemCount % [self numberOfItemsPerPageForHorizontalScroll] == 0 ? 0 : 1);
 }
@@ -282,7 +310,6 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             CGFloat y = _topMargin + row * (itemSize.height + _rowSpacing);
             return CGRectMake(x, y, itemSize.width, itemSize.height);
         }
-       
     }
     return CGRectZero;
 }
@@ -309,9 +336,15 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     _dragItem = nil;
     _springing = NO;
     _dragTouch = nil;
+    _accepterItem = nil;
+    _isHoldTimer = NO;
+    _willReceiverIndex = -2;
     
     ALTimerInvalidate(_triggerEditingHolderTimer)
     ALTimerInvalidate(_springTimer)
+    ALTimerInvalidate(_willMergeHoldTimer)
+    ALTimerInvalidate(_didMergeHoldTimer)
+    ALTimerInvalidate(_dragOutHoldTimer)
 }
 
 - (void)reloadData
@@ -331,8 +364,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         }
     }
     [_items removeAllObjects];
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    
+    CGRect visibleRect = [self visibleRect];
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
+    
     if (_scrollMode == ALGridViewScrollModeHorizontal) {
         loadDataRect = CGRectInset(visibleRect, - CGRectGetWidth(_contentView.bounds), 0);
     }
@@ -342,11 +377,15 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     for (NSInteger i = 0; i < totalItemsNumber; i++) {
         [_items addObject:[NSNull null]];
     }
+    BOOL _isFoundFirstLoadItem = NO;
     for (NSInteger index = 0; index < totalItemsNumber; index++) {
         CGRect frame = [self frameForItemAtIndex:index];
         if (CGRectIntersectsRect(loadDataRect, frame)) {
-            if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
-                ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
+            if (!_isFoundFirstLoadItem) {
+                _isFoundFirstLoadItem = YES;
+            }
+            if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:itemAtIndex:)]) {
+                ALGridViewItem *item = [_dataSource gridView:self itemAtIndex:index];
                 item.frame = frame;
                 [self configEventsForItem:item];
                 [_items replaceObjectAtIndex:index withObject:item];
@@ -354,6 +393,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             } else {
                 NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method - ALGridView:itemAtIndex:" userInfo:nil];
                 [exception raise];
+            }
+        } else {
+            if (_isFoundFirstLoadItem) {
+                break;
             }
         }
     }
@@ -366,7 +409,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         return;
     }
     
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect visibleRect = [self visibleRect];
     CGRect loadDataRect = CGRectInset(visibleRect, 0, -1 * _offsetThreshold);
     if (_scrollMode == ALGridViewScrollModeHorizontal) {
         loadDataRect = CGRectInset(visibleRect, -_offsetThreshold, 0);
@@ -381,8 +424,8 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             }
         } else {
             if (!item) {
-                if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:itemAtIndex:)]) {
-                    ALGridViewItem *item = [_dataSource ALGridView:self itemAtIndex:index];
+                if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:itemAtIndex:)]) {
+                    ALGridViewItem *item = [_dataSource gridView:self itemAtIndex:index];
                     item.frame = frame;
                     item.editing = _editing;
                     [self configEventsForItem:item];
@@ -394,7 +437,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
                         [self removeShakeAnimationForItem:item];
                     }
                 } else {
-                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method ALGridView:itemAtIndex:" userInfo:nil];
+                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method -ALGridView:itemAtIndex:" userInfo:nil];
                     [exception raise];
                 }
             }
@@ -488,8 +531,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)setEditing:(BOOL)editing
 {
     if (_editing != editing) {
-        _editing = editing;
-        if (_editing) {
+        if (editing) {
             [self beginEditing];
         } else {
             [self endEditing];
@@ -505,7 +547,6 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)beginEditing
 {
     if (_editing) {
-        NSLog(@"return editing");
         return;
     }
     _editing = YES;
@@ -520,8 +561,8 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         
         [self addShakeAnimationForItem:item];
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidBeginEditing:)]) {
-        [_delegate ALGridViewDidBeginEditing:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidBeginEditing:)]) {
+        [_delegate gridViewDidBeginEditing:self];
     }
 }
 
@@ -542,7 +583,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 
 - (void)removeShakeAnimationForItem:(ALGridViewItem *)item
 {
-    if ([item isKindOfClass:[ALGridViewItem class]]) {
+    if (item && [item isKindOfClass:[ALGridViewItem class]]) {
         [item.layer removeAnimationForKey:kShakeAnimationKey];
     }
 }
@@ -576,10 +617,10 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     } completion:^(BOOL finished) {
         [self endEditingAnimationDidStop];
         [self layoutItemsIsNeedAnimation:NO];
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidEndEditing:)]) {
-            [_delegate ALGridViewDidEndEditing:self];
-        }
         [self resetVariatesState];
+        if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndEditing:)]) {
+            [_delegate gridViewDidEndEditing:self];
+        }
     }];
 }
 
@@ -593,16 +634,33 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     }
 }
 
+- (CGRect)visibleRect
+{
+    return CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+}
+
 - (NSArray *)visibleItems
 {
     NSMutableArray *visibleItems = [NSMutableArray array];
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect visibleRect = [self visibleRect];
+    BOOL _isFoundFirstItem = NO;
     for (NSInteger index = 0; index < _items.count; index++) {
         ALGridViewItem *item = [_items objectAtIndex:index];
         if ([item isKindOfClass:[ALGridViewItem class]]) {
             CGRect frame = [self frameForItemAtIndex:index];
             if (CGRectIntersectsRect(visibleRect, frame)) {
+                if (!_isFoundFirstItem) {
+                    _isFoundFirstItem = YES;
+                }
                 [visibleItems addObject:item];
+            } else {
+                if (_isFoundFirstItem) {
+                    break;
+                }
+            }
+        } else {
+            if (_isFoundFirstItem) {
+                break;
             }
         }
     }
@@ -612,7 +670,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (NSArray *)indexsForVisibleItems
 {
     NSMutableArray *indexs = [NSMutableArray array];
-    CGRect visibleRect = CGRectMake(_contentView.contentOffset.x, _contentView.contentOffset.y, CGRectGetWidth(_contentView.bounds), CGRectGetHeight(_contentView.bounds));
+    CGRect visibleRect = [self visibleRect];
     for (NSInteger index = 0; index < _items.count; index++) {
         ALGridViewItem *item = [_items objectAtIndex:index];
         if ([item isKindOfClass:[ALGridViewItem class]]) {
@@ -695,12 +753,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     if (_editing) {
         return;
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didSelectItemAtIndex:)]) {
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didSelectItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:item];
         if (index != -1) {
             [item setSelected:YES];
             [self performSelector:@selector(deselectItem:) withObject:item afterDelay:0.2];
-            [_delegate ALGridView:self didSelectItemAtIndex:index];
+            [_delegate gridView:self didSelectItemAtIndex:index];
         }
     }
 }
@@ -714,7 +772,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 
 - (void)itemDidTouchDown:(ALGridViewItem *)item withEvent:(UIEvent *)event
 {
-    if (!_canEnterEditing) {
+    if (!_canEdit) {
         return;
     }
     if (_editing) {
@@ -722,9 +780,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             [self startDragItem:item withEvent:event];
         }
     } else {
-        if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canTriggerEditAtIndex:)]) {
+        if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canTriggerEditAtIndex:)]) {
             NSInteger index = [self indexOfItem:item];
-            if ([_dataSource ALGridView:self canTriggerEditAtIndex:index]) {
+            if (index == -1 || index == NSNotFound) {
+                return;
+            }
+            if ([_dataSource gridView:self canTriggerEditAtIndex:index]) {
                 [self startTriggerEditingTimerWithTouchItem:item event:event];
             }
         } else {
@@ -759,8 +820,8 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 {
     ALGridViewItem *item = (ALGridViewItem *)button.superview;
     if ([item isKindOfClass:[ALGridViewItem class]]) {
-        if (_delegate && [_delegate respondsToSelector:@selector(ALGridView:didTapedDeleteButtonWithIndex:)]) {
-            [_delegate ALGridView:self didTapedDeleteButtonWithIndex:item.index];
+        if (_delegate && [_delegate respondsToSelector:@selector(gridView:didTapedDeleteButtonWithIndex:)]) {
+            [_delegate gridView:self didTapedDeleteButtonWithIndex:item.index];
         }
     }
 }
@@ -768,24 +829,102 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)startDragItem:(ALGridViewItem *)item withEvent:(UIEvent *)event
 {
     ALTimerInvalidate(_springTimer)
-    if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
+    if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:item];
-        BOOL canMove = [_dataSource ALGridView:self canMoveItemAtIndex:index];
-        if (!canMove) {
+        if (index == -1 || index == NSNotFound) {
+            return;
+        }
+        if (![_dataSource gridView:self canMoveItemAtIndex:index]) {
             return;
         }
     }
-
-//    if (!item.canMove) {
-//        return;
-//    }
     if (item) {
-        item.transform = CGAffineTransformIdentity;
+        [self removeShakeAnimationForItem:item];
+        item.transform = CGAffineTransformMakeScale(1.1, 1.1);
         [_contentView bringSubviewToFront:item];
         _dragItem = item;
-        
         UITouch *touch = [[event allTouches] anyObject];
         _dragTouch = touch;
+//        CGPoint point = [touch locationInView:_contentView];
+//        _dragItem.center = point;
+        
+        if (_delegate && [_delegate respondsToSelector:@selector(gridView:didBeganDragItemAtIndex:)]) {
+            NSInteger index = [self indexOfItem:_dragItem];
+            [_delegate gridView:self didBeganDragItemAtIndex:index];
+        }
+    }
+}
+
+- (void)updateCreateFolderIfNeed
+{
+    if (!_canCreateFolder) {
+        return;
+    }
+    CGPoint dragPoint = [_dragTouch locationInView:_contentView];
+    CGPoint dragPointInSelf = [_contentView convertPoint:dragPoint toView:self];
+//        CGRect dragFrameInSelf = [_contentView convertRect:_dragItem.frame toView:self];
+    if (!CGRectContainsPoint(self.bounds, dragPointInSelf)) {
+        if (!_dragOutHoldTimer) {
+            _dragOutHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDragOutHoldInterval target:self selector:@selector(dragOutHoldTimerDidFired:) userInfo:nil repeats:NO];
+        }
+    } else {
+        ALTimerInvalidate(_dragOutHoldTimer)
+    }
+    
+    if (_accepterItem) {
+        CGRect intersection = CGRectIntersection(_accepterItem.frame, _dragItem.frame);
+        BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= (_accepterItem.frame.size.height * _accepterItem.frame.size.width) * 2.0 / 3.0;
+        if (!isNeedMerge) {
+            _dragItem.transform = CGAffineTransformMakeScale(1.1, 1.1);
+            [self cancelMergeItems];
+            ALTimerInvalidate(_didMergeHoldTimer)
+        }
+    } else {
+        BOOL willSpring = NO;
+        if (_dragItem) {
+            CGRect dragItemFrame = [_contentView convertRect:_dragItem.frame toView:self];
+            if (_scrollMode == ALGridViewScrollModeVertical) {
+                if (dragItemFrame.origin.y < 0 || CGRectGetMaxY(dragItemFrame) > CGRectGetHeight(self.bounds)) {
+                    willSpring = YES;
+                }
+            } else {
+                if (dragItemFrame.origin.x < 0 || CGRectGetMaxX(dragItemFrame) > CGRectGetWidth(self.bounds)) {
+                    willSpring = YES;
+                }
+            }
+        }
+        if (!willSpring) {
+            NSArray *items = [self visibleItems];
+            for (NSInteger index = 0; index < items.count; index++) {
+                ALGridViewItem *item = [items objectAtIndex:index];
+                if (![item isKindOfClass:[ALGridViewItem class]] || [item isEqual:_dragItem]) {
+                    continue;
+                }
+                if (_delegate && [_delegate respondsToSelector:@selector(gridView:canReceiveOtherItemAtIndex:)]) {
+                    if (![_delegate gridView:self canReceiveOtherItemAtIndex:[self indexOfItem:item]]) {
+                        continue;
+                    }
+                }
+                CGRect intersection = CGRectIntersection(item.frame, _dragItem.frame);
+                BOOL isNeedMerge = (intersection.size.width * intersection.size.height) >= ((item.frame.size.height * item.frame.size.width) * 2.0 / 3.0);
+                if (isNeedMerge) {
+                        if (!_willMergeHoldTimer) {
+                            NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+                            [userInfo setObject:item forKey:kAcceptItemUserInfoKey];
+                            _willMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kWillMergeItemHoldInterval target:self selector:@selector(willMergeHoldTimerFired:) userInfo:userInfo repeats:NO];
+                            _isHoldTimer = YES;
+                            _willReceiverIndex = [self indexOfItem:item];
+                        }
+                } else {
+                    if (_isHoldTimer && ([self indexOfItem:item] == _willReceiverIndex)) {
+                        ALTimerInvalidate(_willMergeHoldTimer);
+                        _isHoldTimer = NO;
+                        _willReceiverIndex = -2;
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -794,9 +933,12 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     if (!_dragItem) {
         return;
     }
-    if (_dataSource && [_dataSource respondsToSelector:@selector(ALGridView:canMoveItemAtIndex:)]) {
+    if (_dataSource && [_dataSource respondsToSelector:@selector(gridView:canMoveItemAtIndex:)]) {
         NSInteger index = [self indexOfItem:_dragItem];
-        if (![_dataSource ALGridView:self canMoveItemAtIndex:index]) {
+        if (index == -1) {
+            return;
+        }
+        if (![_dataSource gridView:self canMoveItemAtIndex:index]) {
             return;
         }
     }
@@ -804,18 +946,32 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     _dragItem.center = dragPoint;
     _dragItem.dragging = YES;
     [_contentView bringSubviewToFront:_dragItem];
+    
+    [self updateCreateFolderIfNeed];
+    [self updateSpring];
+}
+
+- (void)updateSpring
+{
     CGRect dragItemFrameInView = [_contentView convertRect:_dragItem.frame toView:self];
     CGSize itemSize = [self itemSize];
-    
     if (_scrollMode == ALGridViewScrollModeVertical) {
         CGFloat dragItemMaxY = CGRectGetMaxY(dragItemFrameInView);
         CGFloat selfHeight = CGRectGetHeight(self.bounds);
         CGFloat triggerSpringHeight = itemSize.height / 11.0;
         if (dragItemFrameInView.origin.y < 0 && (ABS(dragItemFrameInView.origin.y) >= triggerSpringHeight)) {
+            if (_accepterItem) {
+                [self cancelMergeItems];
+            }
+            
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
             }
         } else if (dragItemMaxY > selfHeight && ((dragItemMaxY - selfHeight) >= triggerSpringHeight)) {
+            if (_accepterItem) {
+                [self cancelMergeItems];
+            }
+            
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
             }
@@ -827,10 +983,16 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         CGFloat selfWidth = CGRectGetWidth(self.bounds);
         CGFloat triggerSpringWidth = itemSize.width / 11.0;
         if (dragItemFrameInView.origin.x < 0 && ABS(dragItemFrameInView.origin.x) >= triggerSpringWidth) {
+            if (_accepterItem) {
+                [self cancelMergeItems];
+            }
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:-1] repeats:NO];
             }
         } else if (dragMaxX > selfWidth && ((dragMaxX - selfWidth) >= triggerSpringWidth)) {
+            if (_accepterItem) {
+                [self cancelMergeItems];
+            }
             if (!_springTimer) {
                 _springTimer = [NSTimer scheduledTimerWithTimeInterval:kSpringHoldInterval target:self selector:@selector(springTimerDidFired:) userInfo:[NSNumber numberWithInt:1] repeats:NO];
             }
@@ -838,6 +1000,48 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             ALTimerInvalidate(_springTimer)
         }
     }
+}
+
+- (void)dragOutHoldTimerDidFired:(NSTimer *)timer
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didDraggedOutItemAtIndex:)]) {
+        [_delegate gridView:self didDraggedOutItemAtIndex:[self indexOfItem:_dragItem]];
+    }
+}
+
+- (void)cancelMergeItems
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didCancelMergeItemsWithReceiverIndex:fromIndex:)]) {
+        NSInteger receiveIndex = [self indexOfItem:_accepterItem];
+        NSInteger fromIndex = [self indexOfItem:_dragItem];
+    
+        [_delegate gridView:self didCancelMergeItemsWithReceiverIndex:receiveIndex fromIndex:fromIndex];
+    }
+    ALTimerInvalidate(_willMergeHoldTimer)
+    _accepterItem = nil;
+    _isHoldTimer = NO;
+    _willReceiverIndex = -2;
+}
+
+- (void)willMergeHoldTimerFired:(NSTimer *)timer
+{
+    NSDictionary *userIndfo = timer.userInfo;
+    _accepterItem = [userIndfo valueForKey:kAcceptItemUserInfoKey];
+    
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:willMergeItemsWithReceiverIndex:fromIndex:)]) {
+        [_delegate gridView:self willMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem]];
+    }
+    _dragItem.transform = CGAffineTransformMakeScale(0.9, 0.9);
+    _didMergeHoldTimer = [NSTimer scheduledTimerWithTimeInterval:kDidMergeItemHoldInterval target:self selector:@selector(didMergeItemHoldTimerFired:) userInfo:nil repeats:NO];
+}
+
+- (void)didMergeItemHoldTimerFired:(NSTimer *)timer
+{
+    if (_delegate && [_delegate respondsToSelector:@selector(gridView:didMergeItemsWithReceiverIndex:fromIndex:touch:)]) {
+            [_delegate gridView:self didMergeItemsWithReceiverIndex:[self indexOfItem:_accepterItem] fromIndex:[self indexOfItem:_dragItem] touch:_dragTouch];
+    }
+    
+    ALTimerInvalidate(_didMergeHoldTimer)
 }
 
 - (void)springTimerDidFired:(NSTimer *)timer
@@ -905,7 +1109,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
     if (_scrollMode == ALGridViewScrollModeHorizontal) {
         contentOffset = _contentView.contentOffset.x;
     }
-    //用户可能在为0的时候，向上/左 拖拽
+    //用户可能在contentOffset为0的时候，向上/左 拖拽
     if (contentOffset > 0) {
         CGFloat diff = 0;
 #if __LP64__
@@ -918,8 +1122,8 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
             [self removeAndAddItemsIfNecessary];
         }
     }
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScroll:)]) {
-        [_delegate ALGridViewDidScroll:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidScroll:)]) {
+        [_delegate gridViewDidScroll:self];
     }
 }
 
@@ -927,6 +1131,9 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
 //     NSLog(@"%s", __FUNCTION__);
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewWillBeginDragging:)]) {
+        [_delegate gridViewWillBeginDragging:self];
+    }
 }
 
 //// called on finger up if the user dragged. velocity is in points/millisecond. targetContentOffset may be changed to adjust where the scroll view comes to rest
@@ -939,12 +1146,19 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 // called on finger up if the user dragged. decelerate is true if it will continue moving afterwards
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
-    NSLog(@"%s", __FUNCTION__);
-    ALTimerInvalidate(_triggerEditingHolderTimer)
-    if (_dragItem) {
-        CGRect frame = [self frameForItemAtIndex:[self indexOfItem:_dragItem]];
-        _dragItem.frame = frame;
-        _dragItem = nil;
+//    ALTimerInvalidate(_triggerEditingHolderTimer)
+//    if (_dragItem) {
+//        NSInteger index = [self indexOfItem:_dragItem];
+//        if (index == -1) {
+//            return;
+//        }
+//        CGRect frame = [self frameForItemAtIndex:index];
+//        _dragItem.frame = frame;
+//        _dragItem = nil;
+//    }
+    
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndDragging:willDecelerate:)]) {
+        [_delegate gridViewDidEndDragging:self willDecelerate:decelerate];
     }
 }
 
@@ -952,12 +1166,18 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
 {
 //     NSLog(@"%s", __FUNCTION__);
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewWillBeginDecelerating:)]) {
+        [_delegate gridViewWillBeginDecelerating:self];
+    }
 }
 
 // called when scroll view grinds to a halt,停止滑动了
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
 //    NSLog(@"%s", __FUNCTION__);
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndDecelerating:)]) {
+        [_delegate gridViewDidEndDecelerating:self];
+    }
 }
 
 // called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
@@ -970,13 +1190,16 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
         _dragItem.center = center;
         [self updateDragTouch];
     }
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidEndScrollingAnimation:)]) {
+        [_delegate gridViewDidEndScrollingAnimation:self];
+    }
 }
 
 - (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
 {
     [self resetAllVisibleItems]; //是否必须
-    if (_delegate && [_delegate respondsToSelector:@selector(ALGridViewDidScrollToTop:)]) {
-        [_delegate ALGridViewDidScrollToTop:self];
+    if (_delegate && [_delegate respondsToSelector:@selector(gridViewDidScrollToTop:)]) {
+        [_delegate gridViewDidScrollToTop:self];
     }
 }
 
@@ -984,19 +1207,6 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [super touchesBegan:touches withEvent:event];
-   
-    _dragTouch = [touches anyObject];
-    CGPoint touchPoint = [_dragTouch locationInView:_contentView];
-    for (ALGridViewItem *item in _items) {
-        if (![item isKindOfClass:[ALGridViewItem class]]) {
-            continue;
-        }
-        if (CGRectContainsPoint(item.frame, touchPoint)) {
-            _dragItem = item;
-            _dragItem.dragging = YES;
-            break;
-        }
-    }
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
@@ -1015,12 +1225,31 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [super touchesEnded:touches withEvent:event];
- 
+    
+    [self endTouch:touches];
+}
+
+- (void)endTouch:(NSSet *)touches
+{
     ALTimerInvalidate(_springTimer)
     ALTimerInvalidate(_triggerEditingHolderTimer)
     _springing = NO;
     if (_dragItem) {
+        _dragItem.transform = CGAffineTransformIdentity;
+        [self addShakeAnimationForItem:_dragItem];
         _dragItem.dragging = NO;
+        if (_delegate && [_delegate respondsToSelector:@selector(gridView:didEndDragItemAtIndex:)]) {
+            NSInteger index = [self indexOfItem:_dragItem];
+            if (index != -1) {
+                [_delegate gridView:self didEndDragItemAtIndex:index];
+            }
+        }
+        
+        ALTimerInvalidate(_willMergeHoldTimer)
+        if (_didMergeHoldTimer) {
+            [self cancelMergeItems];
+        }
+        ALTimerInvalidate(_didMergeHoldTimer)
         _dragItem = nil;
     }
     for (UITouch *touch in touches) {
@@ -1036,21 +1265,7 @@ const NSTimeInterval kSpringHoldInterval = 1.0;
 {
     [super touchesCancelled:touches withEvent:event];
     
-    ALTimerInvalidate(_springTimer)
-    ALTimerInvalidate(_triggerEditingHolderTimer)
-    _springing = NO;
-    if (_dragItem) {
-        _dragItem.dragging = NO;
-        _dragItem.backgroundColor = [UIColor grayColor];
-        _dragItem = nil;
-    }
-    for (UITouch *touch in touches) {
-        if ([touch isEqual:_dragTouch]) {
-            _dragTouch = nil;
-            break;
-        }
-    }
-    [self layoutItemsIsNeedAnimation:YES];
+    [self endTouch:touches];
 }
 
 @end
