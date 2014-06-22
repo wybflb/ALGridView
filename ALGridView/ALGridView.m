@@ -210,6 +210,9 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     if (_dataSource && [_dataSource respondsToSelector:@selector(numberOfColumnsInGridView:)]) {
         NSInteger columns = [_dataSource numberOfColumnsInGridView:self];
         return ((columns >= 0) ? columns : 0);
+    } else {
+        NSException *exception = [NSException exceptionWithName:@"ALGridView exception" reason:@"the ALGridView's data source method - numberOfColumnsInGridView: isn't found" userInfo:nil];
+        [exception raise];
     }
     return 0;
 }
@@ -220,7 +223,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         NSInteger itemsNumber = [_dataSource numberOfItemsInGridView:self];
         return ((itemsNumber >= 0) ? itemsNumber : 0);
     } else {
-        NSException *exception = [NSException exceptionWithName:@"ALGridView exceptiom" reason:@"the ALGridView's data source method - numberOfItemsInGridView: isn't found" userInfo:nil];
+        NSException *exception = [NSException exceptionWithName:@"ALGridView exception" reason:@"the ALGridView's data source method - numberOfItemsInGridView: isn't found" userInfo:nil];
         [exception raise];
     }
     return 0;
@@ -394,7 +397,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
                 [_items replaceObjectAtIndex:index withObject:item];
                 [_contentView addSubview:item];
             } else {
-                NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method - ALGridView:itemAtIndex:" userInfo:nil];
+                NSException *exception = [NSException exceptionWithName:@"ALGridView exception" reason:@"no implementation for ALGridView's dataSource method - ALGridView:itemAtIndex:" userInfo:nil];
                 [exception raise];
             }
         } else {
@@ -440,7 +443,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
                         [self removeShakeAnimationForItem:item];
                     }
                 } else {
-                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method -ALGridView:itemAtIndex:" userInfo:nil];
+                    NSException *exception = [NSException exceptionWithName:@"ALGridView exception" reason:@"no implementation for ALGridView's dataSource method -ALGridView:itemAtIndex:" userInfo:nil];
                     [exception raise];
                 }
             }
