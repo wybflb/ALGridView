@@ -69,9 +69,8 @@ typedef NS_ENUM(NSInteger, ALGridViewScrollMode) {
 @end
 
 @protocol ALGridViewDelegate <NSObject>
-@required
-- (CGSize)itemSizeForGridView:(ALGridView *)gridView;
 @optional
+- (CGSize)itemSizeForGridView:(ALGridView *)gridView;
 - (void)gridView:(ALGridView *)gridView didSelectItemAtIndex:(NSInteger)index;//
 - (CGFloat)rowSpacingForGridView:(ALGridView *)gridView;//
 - (CGFloat)columnSpacingForGridView:(ALGridView *)gridView;//

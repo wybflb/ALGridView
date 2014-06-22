@@ -219,6 +219,9 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     if (_dataSource && [_dataSource respondsToSelector:@selector(numberOfItemsInGridView:)]) {
         NSInteger itemsNumber = [_dataSource numberOfItemsInGridView:self];
         return ((itemsNumber >= 0) ? itemsNumber : 0);
+    } else {
+        NSException *exception = [NSException exceptionWithName:@"ALGridView exceptiom" reason:@"the ALGridView's data source method - numberOfItemsInGridView: isn't found" userInfo:nil];
+        [exception raise];
     }
     return 0;
 }

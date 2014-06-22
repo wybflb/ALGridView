@@ -49,43 +49,7 @@
     _gridView.canEdit = YES;
     _gridView.canCreateFolder = YES;
     [self.view addSubview:_gridView];
-    
-//    UIButton *button = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-//    button.frame = CGRectMake(50, 100, 70, 40);
-//    [button setTitle:@"title" forState:UIControlStateNormal];
-//    [button addTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
-//    [button addTarget:self action:@selector(itemDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
-//    [button addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
-//    [button addTarget:self action:@selector(itemDidTouchCancel:) forControlEvents:UIControlEventTouchCancel];
-//    [button addTarget:self action:@selector(itemDidTouchDragExit:) forControlEvents:UIControlEventTouchDragExit];
-//    [self.view addSubview:button];
 }
-
-//- (void)itemDidTaped:(ALGridViewItem *)item
-//{
-//    NSLog(@"%s", __FUNCTION__);
-//}
-//
-//- (void)itemDidTouchDown:(ALGridViewItem *)item withEvent:(UIEvent *)event
-//{
-//     NSLog(@"%s", __FUNCTION__);
-//}
-//
-//- (void)itemDidTouchUpOutSide:(ALGridViewItem *)item
-//{
-//    //手指超过control的边界
-//     NSLog(@"%s", __FUNCTION__);
-//}
-//
-//- (void)itemDidTouchCancel:(UIButton *)button
-//{
-//    NSLog(@"%s", __FUNCTION__);
-//}
-//
-//- (void)itemDidTouchDragExit:(UIButton *)button
-//{
-//    NSLog(@"%s", __FUNCTION__);
-//}
 
 - (void)viewDidAppear:(BOOL)animated
 {
@@ -95,11 +59,11 @@
 
 - (void)resetData
 {
-    NSArray *array = [_gridView visibleItems];
-    for (NSInteger index = 0; index < array.count; index++) {
-        ALGridViewItem *item = [array objectAtIndex:index];
-        NSLog(@"%d,frame = %@", [_gridView indexOfItem:item], NSStringFromCGRect(item.frame));
-    }
+//    NSArray *array = [_gridView visibleItems];
+//    for (NSInteger index = 0; index < array.count; index++) {
+//        ALGridViewItem *item = [array objectAtIndex:index];
+//        NSLog(@"%d,frame = %@", [_gridView indexOfItem:item], NSStringFromCGRect(item.frame));
+//    }
 //    NSMutableArray *array = [NSMutableArray array];
 //    for (int i = 0; i < 20; i++) {
 //        [array addObject:[NSNull null]];
@@ -141,11 +105,6 @@
         item = [gridView dequeueReusableItemWithIdentifier:reuserIdentifier];
         if (!item) {
             item = [[ALGridViewItem alloc] initWithReuseIdentifier:reuserIdentifier];
-            //        [item addTarget:self action:@selector(itemDidTaped:) forControlEvents:UIControlEventTouchUpInside];
-            //        [item addTarget:self action:@selector(itemDidTouchDown:withEvent:) forControlEvents:UIControlEventTouchDown];
-            //        [item addTarget:self action:@selector(itemDidTouchUpOutSide:) forControlEvents:UIControlEventTouchUpOutside];
-            //        [item addTarget:self action:@selector(itemDidTouchCancel:) forControlEvents:UIControlEventTouchCancel];
-            //        [item addTarget:self action:@selector(itemDidTouchDragExit:) forControlEvents:UIControlEventTouchDragExit];
         }
         item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
         //    if (_isReloadData) {
