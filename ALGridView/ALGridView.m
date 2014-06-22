@@ -443,7 +443,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
                         [self removeShakeAnimationForItem:item];
                     }
                 } else {
-                    NSException *exception = [NSException exceptionWithName:@"ALGridView DataSource" reason:@"no implementation for ALGridView dataSource method -ALGridView:itemAtIndex:" userInfo:nil];
+                    NSException *exception = [NSException exceptionWithName:@"ALGridView exception" reason:@"no implementation for ALGridView's dataSource method -ALGridView:itemAtIndex:" userInfo:nil];
                     [exception raise];
                 }
             }
