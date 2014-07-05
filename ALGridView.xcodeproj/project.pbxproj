@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		218C52EE1967FE38002608D3 /* SecondViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 218C52ED1967FE38002608D3 /* SecondViewController.m */; };
 		588F531819343F07009C077A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 588F531719343F07009C077A /* Foundation.framework */; };
 		588F531A19343F07009C077A /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 588F531919343F07009C077A /* CoreGraphics.framework */; };
 		588F531C19343F07009C077A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 588F531B19343F07009C077A /* UIKit.framework */; };
@@ -36,6 +37,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		218C52EC1967FE38002608D3 /* SecondViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SecondViewController.h; sourceTree = "<group>"; };
+		218C52ED1967FE38002608D3 /* SecondViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SecondViewController.m; sourceTree = "<group>"; };
 		588F531419343F07009C077A /* ALGridView.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ALGridView.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		588F531719343F07009C077A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		588F531919343F07009C077A /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -123,6 +126,8 @@
 				588F532719343F07009C077A /* AppDelegate.m */,
 				588F534619343F14009C077A /* RootViewController.h */,
 				588F534719343F14009C077A /* RootViewController.m */,
+				218C52EC1967FE38002608D3 /* SecondViewController.h */,
+				218C52ED1967FE38002608D3 /* SecondViewController.m */,
 				588F534919343F25009C077A /* ALGridView.h */,
 				588F534A19343F25009C077A /* ALGridView.m */,
 				588F534C19343FBA009C077A /* ALGridViewItem.h */,
@@ -265,6 +270,7 @@
 				588F532819343F07009C077A /* AppDelegate.m in Sources */,
 				588F534B19343F25009C077A /* ALGridView.m in Sources */,
 				588F534E19343FBA009C077A /* ALGridViewItem.m in Sources */,
+				218C52EE1967FE38002608D3 /* SecondViewController.m in Sources */,
 				588F532419343F07009C077A /* main.m in Sources */,
 				588F534819343F14009C077A /* RootViewController.m in Sources */,
 				588F535119346583009C077A /* ALGridFolderView.m in Sources */,
