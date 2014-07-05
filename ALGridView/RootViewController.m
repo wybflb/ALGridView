@@ -34,6 +34,8 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    self.view.backgroundColor = [UIColor blackColor];
+    
     _isReloadData = NO;
     _viewData = [NSMutableArray array];
     for (int i = 0; i < 100; i++) {
@@ -113,11 +115,14 @@
         //        item.label.text = [NSString stringWithFormat:@"第 %d 行", index];
         //    }
     }
-    CGFloat red = random() % 255;
-    CGFloat green = random() % 255;
-    CGFloat blue = random() % 255;
+    CGFloat red = rand() % 255;
+    CGFloat green = rand() % 255;
+    CGFloat blue = rand() % 255;
     
     item.backgroundColor = [UIColor colorWithRed:red/255.0 green:green/255.0 blue:blue/255.0 alpha:1];
+    
+    item.layer.borderColor = [UIColor whiteColor].CGColor;
+    item.layer.borderWidth = 1.0;
     
     return item;
 }
