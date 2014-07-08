@@ -57,68 +57,68 @@
 }
 
 #pragma mark - Touch
-//- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//    [super touchesBegan:touches withEvent:event];
-//    if (self.editing) {
-//        UIResponder *responder = nil;
-//        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
-//            if ([responder isKindOfClass:[ALGridView class]]) {
-//                break;
-//            }
-//        }
-//        if ([responder isKindOfClass:[ALGridView class]]) {
-//            [responder touchesBegan:touches withEvent:event];
-//        }
-//    }
-//}
-//
-//- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//    [super touchesCancelled:touches withEvent:event];
-//    if (self.editing) {
-//        UIResponder *responder = nil;
-//        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
-//            if ([responder isKindOfClass:[ALGridView class]]) {
-//                break;
-//            }
-//        }
-//        if ([responder isKindOfClass:[ALGridView class]]) {
-//            [responder touchesMoved:touches withEvent:event];
-//        }
-//    }
-//}
-//
-//- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//    [super touchesEnded:touches withEvent:event];
-//    if (self.editing) {
-//        UIResponder *responder = nil;
-//        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
-//            if ([responder isKindOfClass:[ALGridView class]]) {
-//                break;
-//            }
-//        }
-//        if ([responder isKindOfClass:[ALGridView class]]) {
-//            [responder touchesEnded:touches withEvent:event];
-//        }
-//    }
-//}
-//
-//- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//    [super touchesCancelled:touches withEvent:event];
-//    if (self.editing) {
-//        UIResponder *responder = nil;
-//        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
-//            if ([responder isKindOfClass:[ALGridView class]]) {
-//                break;
-//            }
-//        }
-//        if ([responder isKindOfClass:[ALGridView class]]) {
-//            [responder touchesCancelled:touches withEvent:event];
-//        }
-//    }
-//}
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesBegan:touches withEvent:event];
+    if (self.editing) {
+        UIResponder *responder = nil;
+        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
+            if ([responder isKindOfClass:[ALGridView class]]) {
+                break;
+            }
+        }
+        if ([responder isKindOfClass:[ALGridView class]]) {
+            [responder touchesBegan:touches withEvent:event];
+        }
+    }
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesCancelled:touches withEvent:event];
+    if (self.editing) {
+        UIResponder *responder = nil;
+        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
+            if ([responder isKindOfClass:[ALGridView class]]) {
+                break;
+            }
+        }
+        if ([responder isKindOfClass:[ALGridView class]]) {
+            [responder touchesMoved:touches withEvent:event];
+        }
+    }
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesEnded:touches withEvent:event];
+    if (self.editing) {
+        UIResponder *responder = nil;
+        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
+            if ([responder isKindOfClass:[ALGridView class]]) {
+                break;
+            }
+        }
+        if ([responder isKindOfClass:[ALGridView class]]) {
+            [responder touchesEnded:touches withEvent:event];
+        }
+    }
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesCancelled:touches withEvent:event];
+    if (self.editing) {
+        UIResponder *responder = nil;
+        for (responder = self.nextResponder; responder; responder = responder.nextResponder) {
+            if ([responder isKindOfClass:[ALGridView class]]) {
+                break;
+            }
+        }
+        if ([responder isKindOfClass:[ALGridView class]]) {
+            [responder touchesCancelled:touches withEvent:event];
+        }
+    }
+}
 
 @end

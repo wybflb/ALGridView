@@ -63,21 +63,34 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
-        [self initVariates];
-         
-        self.multipleTouchEnabled = NO;
-        self.clipsToBounds = YES;
-        
-        [self initContentView];
-        
-        _endEditingGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(triggerEndEditing:)];
-//        _endEditingGesture.numberOfTapsRequired = 1;
-//        _endEditingGesture.numberOfTouchesRequired = 1;
-        _endEditingGesture.delaysTouchesBegan = YES;
-        _endEditingGesture.delegate = self;
-        [self addGestureRecognizer:_endEditingGesture];
+        [self commonInit];
     }
     return self;
+}
+
+- (id)init
+{
+    if (self = [super init]) {
+        [self commonInit];
+    }
+    return self;
+}
+
+- (void)commonInit
+{
+    [self initVariates];
+    
+    self.multipleTouchEnabled = NO;
+    self.clipsToBounds = YES;
+    
+    [self initContentView];
+    
+    _endEditingGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(triggerEndEditing:)];
+    //        _endEditingGesture.numberOfTapsRequired = 1;
+    //        _endEditingGesture.numberOfTouchesRequired = 1;
+    _endEditingGesture.delaysTouchesBegan = YES;
+    _endEditingGesture.delegate = self;
+    [self addGestureRecognizer:_endEditingGesture];
 }
 
 - (void)initVariates
@@ -556,7 +569,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         return;
     }
     _editing = YES;
-    _contentView.delaysContentTouches = NO;
+//    _contentView.delaysContentTouches = NO;
     
     for (ALGridViewItem *item in _items) {
         if ([item isKindOfClass:[NSNull class]]) {
@@ -596,7 +609,9 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (void)willMoveToSuperview:(UIView *)newSuperview
 {
-    [self reloadData];
+    if (newSuperview) {
+        [self reloadData];
+    }
 }
 
 - (void)endEditing
