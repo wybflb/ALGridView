@@ -556,7 +556,7 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
         return;
     }
     _editing = YES;
-    _contentView.delaysContentTouches = NO;
+//    _contentView.delaysContentTouches = NO;
     
     for (ALGridViewItem *item in _items) {
         if ([item isKindOfClass:[NSNull class]]) {
@@ -596,7 +596,9 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
 
 - (void)willMoveToSuperview:(UIView *)newSuperview
 {
-    [self reloadData];
+    if (newSuperview) {
+        [self reloadData];
+    }
 }
 
 - (void)endEditing
