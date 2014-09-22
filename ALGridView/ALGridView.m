@@ -351,7 +351,6 @@ NSString *kTriggerEditingTimerEventKey = @"ALTriggerEditingTimerEventKey";
 
 - (void)resetVariatesState
 {
-#warning 变量置空
     _dragItem = nil;
     _springing = NO;
     _dragTouch = nil;
