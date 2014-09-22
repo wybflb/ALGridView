@@ -17,9 +17,9 @@ CGFloat kDefaultLeftMargin = 30.0f;
 CGFloat kDefaultAnimationInterval = 0.2f;
 NSUInteger kDefaultReuseItemsNumber = 15;
 
-NSString *kShakeAnimationKey = @"shakeAnimation";
-NSString *kDeleteItemAnimationKey = @"deleteItemAnimationKey";
-NSString *kAcceptItemUserInfoKey = @"acceptItemUserInfoKey";
+NSString *kShakeAnimationKey = @"ALGridItemShakeAnimation";
+NSString *kDeleteItemAnimationKey = @"ALDeleteItemAnimationKey";
+NSString *kAcceptItemUserInfoKey = @"ALGridViewAcceptItemUserInfoKey";
 
 const NSTimeInterval kEnterEditingHoldInterval = 1.0;
 const NSTimeInterval kSpringHoldInterval = 1.0;
@@ -28,8 +28,8 @@ const NSTimeInterval kDidMergeItemHoldInterval = 1.2;
 const NSTimeInterval kDragOutHoldInterval = 1.5;
 
 #define ALTimerInvalidate(_timer) if (_timer) {[(_timer) invalidate]; (_timer) = nil;}
-NSString *kTriggerEditingTimerItemKey = @"triggerEditingTimerItemKey";
-NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
+NSString *kTriggerEditingTimerItemKey = @"ALTriggerEditingTimerItemKey";
+NSString *kTriggerEditingTimerEventKey = @"ALTriggerEditingTimerEventKey";
 
 @interface ALGridView () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
 {
@@ -86,8 +86,8 @@ NSString *kTriggerEditingTimerEventKey = @"triggerEditingTimerEventKey";
     [self initContentView];
     
     _endEditingGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(triggerEndEditing:)];
-    //        _endEditingGesture.numberOfTapsRequired = 1;
-    //        _endEditingGesture.numberOfTouchesRequired = 1;
+//    _endEditingGesture.numberOfTapsRequired = 1;
+//    _endEditingGesture.numberOfTouchesRequired = 1;
     _endEditingGesture.delaysTouchesBegan = YES;
     _endEditingGesture.delegate = self;
     [self addGestureRecognizer:_endEditingGesture];

@@ -9,7 +9,7 @@
 #import "SecondViewController.h"
 #import "ALGridView.h"
 
-@interface SecondViewController () <ALGridViewDataSource, ALGridViewDelegate>
+@interface SecondViewController () <ALGridViewDataSource, ALGridViewDelegate, UIActionSheetDelegate>
 {
     ALGridView *_gridView;
     NSMutableArray *_viewData;
@@ -149,7 +149,15 @@ CGFloat systemVersion() {
     //    [gridView deleteItemAtIndex:index animation:[self dropBookToCloudAnimation:[_gridView itemAtIndex:index]]];
     if (index == _viewData.count) {
         NSLog(@"点击了 加号");
+        UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:@"提示" delegate:self cancelButtonTitle:@"取消" destructiveButtonTitle:@"删除" otherButtonTitles:@"other1", @"other2", @"other3", nil];
+        actionSheet.actionSheetStyle = UIActionSheetStyleDefault;
+        [actionSheet showInView:self.view];
     }
+}
+
+- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
+{
+    NSLog(@"buttonIndex:%d", buttonIndex);
 }
 
 - (CAAnimation *)dropBookToCloudAnimation:(ALGridViewItem *)cellToDelete
