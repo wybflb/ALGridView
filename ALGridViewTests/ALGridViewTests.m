@@ -26,20 +26,4 @@
     [super tearDown];
 }
 
-- (void)testNSUInterger
-{
-    NSString *str = @"PdF";
-    if ([str compare:@"pdf" options:NSCaseInsensitiveSearch] == NSOrderedSame) {
-        NSLog(@"\n\nSame\n\n");
-    } else {
-        NSLog(@"\n\nNotSame\n\n");
-    }
-//    NSUInteger num = -1;
-//#if __LP64__
-//    NSLog(@"num=%lu", num);
-//#else
-//    NSLog(@"testNum:%u", num);
-//#endif
-}
-
 @end
